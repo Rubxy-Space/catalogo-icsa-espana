@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catálogo ICSA España 2026 · SBC Grupo Sebalcab</title>
+<meta name="description" content="Catálogo interactivo ICSA España 2026: cilindros, cerraduras, cierrapuertas, antipánicos y candados con foto real, medidas y código. Distribuidor oficial SBC Grupo Sebalcab.">
+<meta name="theme-color" content="#034EA1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="img/marca/logo-icsa.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/estilos.css?v=5">
+</head>
+<body>
+<a class="saltar" href="#app">Ir al contenido</a>
+
+<header class="cabecera">
+  <div class="cabecera__fila envoltura">
+    <a class="marca" href="#/" aria-label="Catálogo ICSA España, inicio">
+      <img src="img/marca/logo-icsa.png" alt="ICSA Made in Italy" width="92" height="46">
+      <span class="marca__texto">España</span>
+    </a>
+    <span class="estado-beta" title="Versión de prueba generada a partir del catálogo PDF España 2026">Beta</span>
+
+    <div class="buscador" id="buscador">
+      <label class="oculto" for="q">Buscar en el catálogo</label>
+      <svg class="buscador__icono" aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" autocomplete="off" spellcheck="false"
+             placeholder="Ej.: hs6 30x40 níquel o 102 inox 25"
+             role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugerencias">
+      <div id="sugerencias" class="sugerencias" role="listbox" hidden></div>
+    </div>
+
+    <button class="boton-lista" id="abrir-lista" type="button" aria-haspopup="dialog" aria-controls="lista">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM9 11h6M9 15h4"/></svg>
+      <span>Lista</span>
+      <span class="contador" id="contador-lista" aria-label="referencias en la lista">0</span>
+    </button>
+  </div>
+  <nav class="familias" aria-label="Familias de producto">
+    <div class="envoltura familias__pista" id="nav-familias"></div>
+  </nav>
+</header>
+
+<main id="app" tabindex="-1"></main>
+
+<footer class="pie">
+  <div class="envoltura pie__rejilla">
+    <div>
+      <img src="img/marca/logo-sbc.png" alt="SBC Grupo Sebalcab" width="150" height="76" loading="lazy">
+      <p>Distribuidor oficial ICSA en España.</p>
+    </div>
+    <div>
+      <h2 class="pie__titulo">Contacto</h2>
+      <p><a href="tel:+34985016946">985 016 946</a><br>
+         <a href="mailto:icsa@sebalcab.es">icsa@sebalcab.es</a><br>
+         Camino de la Xacona 40, 33204 Gijón (Asturias)</p>
+    </div>
+    <div>
+      <h2 class="pie__titulo">Fuente</h2>
+      <p>Fotos, medidas y códigos del <a href="https://icsacerraduras.es/img/catalogo/CATALOGO_IC_w011.pdf" target="_blank" rel="noopener">Catálogo general ICSA España 2026 (PDF)</a>. Versión beta: confirma precios y disponibilidad con Sebalcab.</p>
+      <p><a href="https://www.instagram.com/icsa_spain/" target="_blank" rel="noopener">Instagram @icsa_spain</a></p>
+    </div>
+  </div>
+</footer>
+
+<div class="velo" id="velo" hidden></div>
+<aside class="lista" id="lista" role="dialog" aria-modal="true" aria-labelledby="lista-titulo" hidden>
+  <div class="lista__cabeza">
+    <h2 id="lista-titulo">Lista de referencias</h2>
+    <button class="icono-boton" type="button" id="cerrar-lista" aria-label="Cerrar lista">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="lista__cuerpo" id="lista-cuerpo"></div>
+  <div class="lista__pie" id="lista-pie"></div>
+</aside>
+
+<div class="aviso-flotante" id="aviso" role="status" aria-live="polite"></div>
+
+<script src="data/catalogo.js?v=5"></script>
+<script src="assets/buscador.js?v=5"></script>
+<script src="assets/app.js?v=5"></script>
+</body>
+</html>

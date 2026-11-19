@@ -1,0 +1,5 @@
+# PDFs de origen: no se publican
+_fuente/
+.DS_Store
+__pycache__/
+*.pyc
