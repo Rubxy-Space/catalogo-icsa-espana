@@ -17,7 +17,13 @@ Web estática, sin dependencias, generada a partir del PDF oficial
   151 equivalencias de 43 artículos ICSA con 18 marcas. Apartado propio con matriz y filtro por marca, bloque con logo y
   referencia en cada ficha, tira de logos junto al título y búsqueda inversa («tesa 2210», «iseo 741-7411», «yale 5000»).
   21 artículos están enlazados a su producto (`COMPAT_ENLACES` en `_generador/productos.py`); el resto no está en el catálogo España.
-- Buscador de cilindros por gama, tipo, leva y medida, y lista de referencias con cantidades que se envía por correo a icsa@sebalcab.es.
+- Buscador de cilindros por gama, tipo, leva y medida.
+- Pedido cerrado desde la app: el cliente elige referencias, cantidades, sus datos y observaciones en el panel «Pedido».
+  Al enviar, el correo a icsa@sebalcab.es no lleva la lista editable, sino un enlace al pedido (`#/pedido/...`) y un
+  código de control. Sebalcab abre el enlace y ve el pedido de solo lectura, con fotos y detalle, y puede copiar códigos y
+  cantidades o imprimirlo. Si alguien cambia el enlace, el código de control no cuadra y la página lo avisa en rojo.
+  Límite: el código detecta cambios, pero no es una firma criptográfica; para un envío que el cliente no pueda tocar en
+  absoluto hace falta un servicio de envío (formulario con servidor propio o tipo Formspree).
 
 ## Abrirlo
 

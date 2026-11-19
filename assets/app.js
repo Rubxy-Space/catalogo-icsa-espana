@@ -171,7 +171,7 @@
     if (ya) ya.cant++;
     else lista.push({ cod: e.cod, titulo: tituloProducto(e.p) + " · " + e.p.nombre, desc: e.v.nombre + (resumenFila(e.v, e.v.filas[e.i], e.k) ? " · " + resumenFila(e.v, e.v.filas[e.i], e.k) : ""), pid: e.p.id, vid: e.v.id, cant: 1 });
     guardarLista(true);
-    avisar((ya ? "Una unidad más de " : "Añadido a la lista: ") + e.cod);
+    avisar((ya ? "Una unidad más de " : "Añadido al pedido: ") + e.cod);
   }
   function entradaPor(pid, vid, i, k) {
     var p = PROD[pid], v = p && p.variantes.find(function (x) { return x.id === vid; });
@@ -182,35 +182,116 @@
   var listaEl = document.getElementById("lista"), velo = document.getElementById("velo");
   var listaCuerpo = document.getElementById("lista-cuerpo"), listaPie = document.getElementById("lista-pie");
   var abrirBtn = document.getElementById("abrir-lista"), cerrarBtn = document.getElementById("cerrar-lista");
+
+  // ---- pedido cerrado: el correo solo lleva un enlace con el pedido y su código de control
+  var CLAVE_CLIENTE = "icsa-cliente-v1";
+  var cliente = {};
+  try { cliente = JSON.parse(localStorage.getItem(CLAVE_CLIENTE)) || {}; } catch (e) { cliente = {}; }
+  var CAMPOS = [
+    { id: "e", t: "Empresa", obl: true, tipo: "text", ac: "organization", max: 80 },
+    { id: "p", t: "Persona de contacto", obl: true, tipo: "text", ac: "name", max: 60 },
+    { id: "t", t: "Teléfono", obl: true, tipo: "tel", ac: "tel", max: 20 },
+    { id: "m", t: "Correo electrónico", obl: false, tipo: "email", ac: "email", max: 80 },
+    { id: "o", t: "Observaciones", obl: false, tipo: "area", max: 300 }
+  ];
+  var pedidoHecho = null; // último pedido generado en esta sesión
+  function b64Cod(txt) { return btoa(unescape(encodeURIComponent(txt))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+  function b64Dec(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; return decodeURIComponent(escape(atob(s))); }
+  // código de control: detecta cualquier cambio en el enlace (no es una firma criptográfica)
+  function codigoControl(txt) {
+    function fnv(s, h) { for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
+    var A = "0123456789ABCDEFGHJKMNPQRSTVWXYZ", out = "", n, i;
+    n = fnv("icsa-es|" + txt, 2166136261); for (i = 0; i < 4; i++) { out += A[n & 31]; n >>>= 5; }
+    n = fnv(txt + "|sebalcab", 1540483477); for (i = 0; i < 4; i++) { out += A[n & 31]; n >>>= 5; }
+    return out.slice(0, 4) + "-" + out.slice(4);
+  }
+  function numeroPedido() {
+    var d = new Date(), A = "23456789ABCDEFGHJKMNPQRSTVWXYZ", r = "";
+    for (var i = 0; i < 4; i++) r += A[Math.floor(Math.random() * A.length)];
+    return "P" + String(d.getFullYear()).slice(2) + ("0" + (d.getMonth() + 1)).slice(-2) + ("0" + d.getDate()).slice(-2) + "-" + r;
+  }
+  function crearPedido() {
+    var d = new Date();
+    var o = {
+      v: 1, n: numeroPedido(),
+      f: d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2) + " " + ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2),
+      c: {}, i: lista.map(function (x) { return [x.cod, x.cant, x.pid]; })
+    };
+    CAMPOS.forEach(function (f) { if (cliente[f.id]) o.c[f.id] = cliente[f.id]; });
+    var txt = JSON.stringify(o);
+    var cod = codigoControl(txt);
+    var enlace = location.origin + location.pathname + "#/pedido/" + b64Cod(txt) + "/" + cod;
+    return { o: o, control: cod, enlace: enlace };
+  }
+  function correoPedido(pd) {
+    var uds = pd.o.i.reduce(function (s, x) { return s + x[1]; }, 0);
+    var cuerpo = "Pedido del catálogo ICSA España\n\n" +
+      "Número: " + pd.o.n + "\nCliente: " + pd.o.c.e + " (" + pd.o.c.p + ", " + pd.o.c.t + ")\n" +
+      "Referencias: " + pd.o.i.length + " (" + uds + (uds === 1 ? " unidad" : " unidades") + ")\n\n" +
+      "Pedido completo, tal y como se hizo en el catálogo:\n" + pd.enlace + "\n\n" +
+      "Código de control: " + pd.control + "\n\n" +
+      "El pedido válido es el del enlace. Si se cambia el texto de este correo, el pedido no cambia.\n";
+    return "mailto:icsa@sebalcab.es?subject=" + encodeURIComponent("Pedido " + pd.o.n + " · " + pd.o.c.e) + "&body=" + encodeURIComponent(cuerpo);
+  }
+  function validarCliente() {
+    var errores = [];
+    CAMPOS.forEach(function (f) {
+      var v = (cliente[f.id] || "").trim();
+      var msg = "";
+      if (f.obl && !v) msg = "Escribe " + (f.id === "e" ? "la empresa" : f.id === "p" ? "la persona de contacto" : "un teléfono") + ".";
+      else if (f.id === "t" && v && (v.replace(/\D/g, "").length < 9)) msg = "El teléfono necesita al menos 9 cifras.";
+      else if (f.id === "m" && v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) msg = "Revisa el correo electrónico.";
+      var el = document.getElementById("cli-" + f.id), err = document.getElementById("err-" + f.id);
+      if (el) el.setAttribute("aria-invalid", msg ? "true" : "false");
+      if (err) err.textContent = msg;
+      if (msg) errores.push(f.id);
+    });
+    if (errores.length) {
+      var primero = document.getElementById("cli-" + errores[0]);
+      if (primero) primero.focus();
+      avisar("Faltan datos del pedido");
+    }
+    return !errores.length;
+  }
   function textoLista() {
     return lista.map(function (x) { return x.cant + " x " + x.cod + "  " + x.titulo + " · " + x.desc; }).join("\n");
   }
   function pintarLista() {
     if (!lista.length) {
-      listaCuerpo.innerHTML = '<p class="lista__vacia">La lista está vacía. Usa el botón + de cualquier tabla o del buscador de cilindros para añadir referencias.</p>';
+      listaCuerpo.innerHTML = '<p class="lista__vacia">Tu pedido está vacío. Pulsa + en cualquier referencia de las tablas, del buscador o del buscador de cilindros para añadirla.</p>';
       listaPie.hidden = true;
       return;
     }
     listaPie.hidden = false;
-    listaCuerpo.innerHTML = lista.map(function (x, n) {
+    listaCuerpo.innerHTML = '<h3 class="lista__sub">Referencias</h3>' + lista.map(function (x, n) {
       return '<div class="item">' +
         '<div><a class="item__cod" href="#/p/' + esc(x.pid) + "/" + esc(x.vid) + "?ref=" + encodeURIComponent(x.cod) + '" data-cerrar>' + esc(x.cod) + "</a></div>" +
         '<div class="item__cant">' +
         '<button class="icono-boton" type="button" data-cant="' + n + '" data-d="-1" aria-label="Quitar una unidad de ' + esc(x.cod) + '">' + ICO.menos + "</button>" +
         '<label class="oculto" for="cant-' + n + '">Cantidad de ' + esc(x.cod) + "</label>" +
-        '<input id="cant-' + n + '" type="number" min="1" inputmode="numeric" value="' + x.cant + '" data-cant-input="' + n + '">' +
+        '<input id="cant-' + n + '" type="number" min="1" max="9999" inputmode="numeric" value="' + x.cant + '" data-cant-input="' + n + '">' +
         '<button class="icono-boton" type="button" data-cant="' + n + '" data-d="1" aria-label="Añadir una unidad de ' + esc(x.cod) + '">' + ICO.mas + "</button>" +
-        '<button class="icono-boton" type="button" data-quitar="' + n + '" aria-label="Quitar ' + esc(x.cod) + ' de la lista">' + ICO.borrar + "</button>" +
+        '<button class="icono-boton" type="button" data-quitar="' + n + '" aria-label="Quitar ' + esc(x.cod) + ' del pedido">' + ICO.borrar + "</button>" +
         "</div>" +
         '<div class="item__desc">' + esc(x.titulo) + "<br>" + esc(x.desc) + "</div></div>";
-    }).join("");
+    }).join("") +
+      '<form class="datos" id="form-pedido" novalidate><h3 class="lista__sub">Tus datos</h3>' +
+      CAMPOS.map(function (f) {
+        var v = esc(cliente[f.id] || "");
+        var etiqueta = '<label for="cli-' + f.id + '">' + esc(f.t) + (f.obl ? "" : ' <span class="opcional">(opcional)</span>') + "</label>";
+        var control = f.tipo === "area"
+          ? '<textarea id="cli-' + f.id + '" data-cli="' + f.id + '" maxlength="' + f.max + '" rows="3" placeholder="Plazo, dirección de entrega u otra indicación">' + v + "</textarea>"
+          : '<input id="cli-' + f.id + '" data-cli="' + f.id + '" type="' + f.tipo + '" maxlength="' + f.max + '" autocomplete="' + f.ac + '"' + (f.obl ? " required" : "") + ' aria-describedby="err-' + f.id + '" value="' + v + '">';
+        return '<div class="campo campo--pedido">' + etiqueta + control + '<span class="campo__error" id="err-' + f.id + '" aria-live="polite"></span></div>';
+      }).join("") + "</form>" +
+      (pedidoHecho ? '<div class="pedido-hecho" role="status"><p><b>Pedido ' + esc(pedidoHecho.o.n) + " preparado.</b> Si no se ha abierto tu correo, copia el enlace y envíalo a icsa@sebalcab.es.</p>" +
+        '<p><a href="' + esc(pedidoHecho.enlace) + '" target="_blank" rel="noopener">Ver el pedido como lo verá Sebalcab</a></p></div>' : "");
     var uds = lista.reduce(function (s, x) { return s + x.cant; }, 0);
-    var cuerpo = "Hola, os paso esta lista del catálogo ICSA España 2026:\n\n" + textoLista() + "\n\nNombre:\nEmpresa:\nTeléfono:\n";
-    var mailto = "mailto:icsa@sebalcab.es?subject=" + encodeURIComponent("Consulta catálogo ICSA España (" + lista.length + " referencias)") + "&body=" + encodeURIComponent(cuerpo);
     listaPie.innerHTML =
       '<p class="lista__resumen">' + lista.length + (lista.length === 1 ? " referencia" : " referencias") + " · " + uds + (uds === 1 ? " unidad" : " unidades") + "</p>" +
-      '<a class="boton" href="' + mailto + '">' + ICO.correo + "Enviar por correo a Sebalcab</a>" +
-      '<div class="lista__fila"><button class="boton boton--sec" type="button" data-copiar-lista>' + ICO.copiar + "Copiar lista</button>" +
+      '<button class="boton" type="submit" form="form-pedido" data-enviar>' + ICO.correo + "Enviar pedido a Sebalcab</button>" +
+      '<p class="lista__nota">Se abre tu correo con un enlace a este pedido. Sebalcab verá exactamente lo que has elegido aquí: cambiar el texto del correo no cambia el pedido.</p>' +
+      '<div class="lista__fila"><button class="boton boton--sec" type="button" data-copiar-enlace>' + ICO.copiar + "Copiar enlace</button>" +
       '<button class="boton boton--sec" type="button" data-vaciar>' + ICO.borrar + "Vaciar</button></div>";
   }
   var focoPrevio = null;
@@ -235,35 +316,55 @@
   listaEl.addEventListener("keydown", function (ev) {
     if (ev.key === "Escape") { cerrarLista(); return; }
     if (ev.key !== "Tab") return;
-    var f = listaEl.querySelectorAll("a[href], button, input");
+    var f = listaEl.querySelectorAll("a[href], button, input, textarea");
     if (!f.length) return;
     var primero = f[0], ultimo = f[f.length - 1];
     if (ev.shiftKey && document.activeElement === primero) { ev.preventDefault(); ultimo.focus(); }
     else if (!ev.shiftKey && document.activeElement === ultimo) { ev.preventDefault(); primero.focus(); }
+  });
+  listaEl.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (!lista.length || !validarCliente()) return;
+    pedidoHecho = crearPedido();
+    pintarLista();
+    window.location.href = correoPedido(pedidoHecho);
   });
   listaEl.addEventListener("click", function (ev) {
     var b = ev.target.closest("button, a");
     if (!b) return;
     if (b.hasAttribute("data-cant")) {
       var it = lista[+b.getAttribute("data-cant")];
-      it.cant = Math.max(1, it.cant + (+b.getAttribute("data-d")));
+      it.cant = Math.max(1, Math.min(9999, it.cant + (+b.getAttribute("data-d"))));
+      pedidoHecho = null;
       guardarLista();
-      var inp = document.getElementById(b.id || "") || null; if (inp) inp.focus();
     } else if (b.hasAttribute("data-quitar")) {
       var q = lista.splice(+b.getAttribute("data-quitar"), 1)[0];
-      guardarLista(); avisar("Quitado de la lista: " + q.cod); cerrarBtn.focus();
+      pedidoHecho = null;
+      guardarLista(); avisar("Quitado del pedido: " + q.cod); cerrarBtn.focus();
     } else if (b.hasAttribute("data-vaciar")) {
-      if (window.confirm("¿Vaciar la lista de referencias?")) { lista = []; guardarLista(); cerrarBtn.focus(); }
-    } else if (b.hasAttribute("data-copiar-lista")) {
-      copiar(textoLista(), "Lista copiada al portapapeles");
+      if (window.confirm("¿Vaciar el pedido?")) { lista = []; pedidoHecho = null; guardarLista(); cerrarBtn.focus(); }
+    } else if (b.hasAttribute("data-copiar-enlace")) {
+      if (!validarCliente()) return;
+      pedidoHecho = crearPedido();
+      pintarLista();
+      copiar(pedidoHecho.enlace, "Enlace del pedido " + pedidoHecho.o.n + " copiado");
     } else if (b.hasAttribute("data-cerrar")) {
       cerrarLista();
     }
   });
+  listaEl.addEventListener("input", function (ev) {
+    var k = ev.target.getAttribute("data-cli");
+    if (!k) return;
+    cliente[k] = ev.target.value;
+    pedidoHecho = null;
+    try { localStorage.setItem(CLAVE_CLIENTE, JSON.stringify(cliente)); } catch (e) { /* almacenamiento no disponible */ }
+    if (ev.target.getAttribute("aria-invalid") === "true") { ev.target.setAttribute("aria-invalid", "false"); var er = document.getElementById("err-" + k); if (er) er.textContent = ""; }
+  });
   listaEl.addEventListener("change", function (ev) {
     var n = ev.target.getAttribute("data-cant-input");
     if (n == null) return;
-    lista[+n].cant = Math.max(1, parseInt(ev.target.value, 10) || 1);
+    lista[+n].cant = Math.max(1, Math.min(9999, parseInt(ev.target.value, 10) || 1));
+    pedidoHecho = null;
     guardarLista();
   });
   contador.textContent = lista.length;
@@ -350,7 +451,7 @@
           var cod = f[c[0]];
           return '<div class="resultado__fila"><span class="resultado__acabado">' + c[1] + '</span><span class="resultado__codigo mono">' + esc(cod) + "</span>" +
             '<button class="icono-boton" type="button" data-copiar="' + esc(cod) + '" aria-label="Copiar código ' + esc(cod) + '">' + ICO.copiar + "</button>" +
-            '<button class="icono-boton icono-boton--mas" type="button" data-anadir="' + p.id + "|" + v.id + "|" + i + "|" + c[0] + '" aria-label="Añadir ' + esc(cod) + ' a la lista">' + ICO.mas + "</button></div>";
+            '<button class="icono-boton icono-boton--mas" type="button" data-anadir="' + p.id + "|" + v.id + "|" + i + "|" + c[0] + '" aria-label="Añadir ' + esc(cod) + ' al pedido">' + ICO.mas + "</button></div>";
         }).join("") +
         (rev ? '<div class="nota" style="margin:0;border-radius:0">' + ICO.aviso + "<span>" + esc(rev) + "</span></div>" : "") +
         '<div class="resultado__pie"><span>' + esc(p.mod + " " + (v.art || p.art)) + " · L " + esc(f[1]) + " mm · " + f[6] + "/" + f[7] + ' ud.</span><a href="#/p/' + p.id + "/" + v.id + "?ref=" + encodeURIComponent(f[4]) + '">Ver en la ficha</a></div></div>';
@@ -463,7 +564,7 @@
         if (ci.indexOf(k) >= 0 && val) {
           return '<td><span class="celda-codigo"><span class="mono">' + esc(val) + "</span>" +
             '<button class="icono-boton" type="button" data-copiar="' + esc(val) + '" aria-label="Copiar código ' + esc(val) + '">' + ICO.copiar + "</button>" +
-            '<button class="icono-boton icono-boton--mas" type="button" data-anadir="' + est.p.id + "|" + v.id + "|" + i + "|" + k + '" aria-label="Añadir ' + esc(val) + ' a la lista">' + ICO.mas + "</button>" +
+            '<button class="icono-boton icono-boton--mas" type="button" data-anadir="' + est.p.id + "|" + v.id + "|" + i + "|" + k + '" aria-label="Añadir ' + esc(val) + ' al pedido">' + ICO.mas + "</button>" +
             (rev && k === ci[ci.length - 1] ? '<span class="revisar" title="' + esc(rev) + '" tabindex="0" aria-label="' + esc(rev) + '">' + ICO.aviso + "Revisar</span>" : "") +
             "</span></td>";
         }
@@ -665,7 +766,7 @@
   function botonesRef(e, foco) {
     var ti = foco ? "" : ' tabindex="-1"';
     return '<button class="icono-boton" type="button"' + ti + ' data-copiar="' + esc(e.cod) + '" aria-label="Copiar código ' + esc(e.cod) + '">' + ICO.copiar + "</button>" +
-      '<button class="icono-boton icono-boton--mas" type="button"' + ti + ' data-anadir="' + e.p.id + "|" + e.v.id + "|" + e.i + "|" + e.k + '" aria-label="Añadir ' + esc(e.cod) + ' a la lista">' + ICO.mas + "</button>";
+      '<button class="icono-boton icono-boton--mas" type="button"' + ti + ' data-anadir="' + e.p.id + "|" + e.v.id + "|" + e.i + "|" + e.k + '" aria-label="Añadir ' + esc(e.cod) + ' al pedido">' + ICO.mas + "</button>";
   }
   function entendidoHTML(r) {
     if (!r.entendido || r.entendido.length < 2) return "";
@@ -951,8 +1052,57 @@
     if (foco) foco.focus();
   });
 
+  // ---- página del pedido (la abre Sebalcab desde el enlace del correo; solo lectura)
+  function vistaPedido(token, ctrl) {
+    marcarNav("__ninguna");
+    var txt = null, o = null;
+    try { txt = b64Dec(token || ""); o = JSON.parse(txt); } catch (e) { o = null; }
+    if (!o || !o.i || !o.c) {
+      document.title = "Pedido no válido · ICSA España";
+      app.innerHTML = '<div class="envoltura pagina"><h1>Este enlace de pedido no es válido</h1><p>Puede que se haya cortado al copiarlo. Pide al cliente que lo vuelva a enviar desde el catálogo.</p></div>';
+      return;
+    }
+    var ok = codigoControl(txt) === ctrl;
+    document.title = "Pedido " + o.n + " · ICSA España";
+    var uds = 0;
+    var filas = o.i.map(function (it) {
+      var cod = it[0], cant = +it[1] || 0;
+      uds += cant;
+      var e = IDX.find(function (x) { return x.cod === cod && x.p.id === it[2]; }) || IDX.find(function (x) { return x.cod === cod; });
+      if (!e) return '<tr><td></td><td class="mono">' + esc(cod) + '</td><td colspan="2"><span class="fuera">No está en el catálogo actual</span></td><td class="num"><b>' + cant + "</b></td></tr>";
+      return '<tr><td><img class="pedido__foto" src="' + esc((e.v.foto || e.p.foto).mini) + '" alt=""></td>' +
+        '<td><span class="celda-codigo"><a class="mono" href="' + hrefRef(e) + '">' + esc(cod) + "</a>" +
+        '<button class="icono-boton no-imprimir" type="button" data-copiar="' + esc(cod) + '" aria-label="Copiar código ' + esc(cod) + '">' + ICO.copiar + "</button></span></td>" +
+        "<td>" + esc(tituloProducto(e.p)) + "<br><small>" + esc(e.p.nombre) + "</small></td>" +
+        '<td class="ancho">' + esc(e.v.nombre + (resumenFila(e.v, e.v.filas[e.i], e.k) ? " · " + resumenFila(e.v, e.v.filas[e.i], e.k) : "")) + "</td>" +
+        '<td class="num"><b>' + cant + "</b></td></tr>";
+    }).join("");
+    var dato = function (t, v) { return v ? "<div><dt>" + t + "</dt><dd>" + esc(v) + "</dd></div>" : ""; };
+    app.innerHTML = '<div class="envoltura pagina pedido">' +
+      "<h1>Pedido " + esc(o.n) + "</h1>" +
+      (ok ? '<p class="sello sello--ok">' + ICO.hecho + "<span>Código de control correcto: <b>" + esc(ctrl) + "</b>. El pedido es el mismo que se hizo en el catálogo.</span></p>"
+        : '<p class="sello sello--mal">' + ICO.aviso + "<span>El código de control no coincide: el enlace se ha modificado después de hacer el pedido. Pide al cliente que lo vuelva a enviar desde el catálogo.</span></p>") +
+      '<dl class="pedido__datos">' + dato("Empresa", o.c.e) + dato("Contacto", o.c.p) + dato("Teléfono", o.c.t) + dato("Correo", o.c.m) + dato("Fecha", o.f) + "</dl>" +
+      (o.c.o ? '<div class="pedido__obs"><h2>Observaciones</h2><p>' + esc(o.c.o) + "</p></div>" : "") +
+      '<div class="tabla-caja"><table class="tabla"><thead><tr><th scope="col"><span class="oculto">Foto</span></th><th scope="col">Código</th><th scope="col">Producto</th><th scope="col">Detalle</th><th scope="col" class="num">Cantidad</th></tr></thead><tbody>' +
+      filas + '</tbody><tfoot><tr><td colspan="4">' + o.i.length + (o.i.length === 1 ? " referencia" : " referencias") + '</td><td class="num"><b>' + uds + "</b></td></tr></tfoot></table></div>" +
+      '<div class="ficha__acciones no-imprimir"><button class="boton" type="button" data-copiar-pedido>' + ICO.copiar + "Copiar códigos y cantidades</button>" +
+      '<button class="boton boton--sec" type="button" data-imprimir>Imprimir</button></div>' +
+      '<p class="plano-pie">Página de solo lectura. Para cambiar el pedido, el cliente tiene que hacerlo de nuevo desde el catálogo.</p></div>';
+    estP = o;
+  }
+  var estP = null;
+  app.addEventListener("click", function (ev) {
+    if (!estP) return;
+    if (ev.target.closest("[data-imprimir]")) { window.print(); return; }
+    if (ev.target.closest("[data-copiar-pedido]")) {
+      copiar(estP.i.map(function (it) { return it[0] + "\t" + it[1]; }).join("\n"), "Códigos y cantidades copiados (pegables en Excel o Factusol)");
+    }
+  });
+
   // ------------------------------------------------------------------ enrutado
   function enrutar() {
+    if (!listaEl.hidden) { focoPrevio = null; cerrarLista(); }
     var h = location.hash.replace(/^#/, "") || "/";
     var partes = h.split("?"), ruta = partes[0], params = new URLSearchParams(partes[1] || "");
     var seg = ruta.split("/").filter(Boolean).map(function (s) { try { return decodeURIComponent(s); } catch (e) { return s; } });
@@ -960,11 +1110,13 @@
     if (seg[0] === "f" && FAM[seg[1]]) vistaFamilia(seg[1]);
     else if (seg[0] === "p" && PROD[seg[1]]) mantener = vistaProducto(PROD[seg[1]], seg[2], params.get("ref"), params.get("compat"));
     else if (seg[0] === "compatibilidades") vistaCompat(params.get("q"), params.get("m"));
+    else if (seg[0] === "pedido") vistaPedido(seg[1], seg[2]);
     else if (seg[0] === "buscar" && seg[1]) vistaBusqueda(seg.slice(1).join("/"));
     else { est = null; vistaInicio(); }
     if (seg[0] !== "p") est = null;
     if (seg[0] !== "buscar") estB = null;
     if (seg[0] !== "compatibilidades") estC = null;
+    if (seg[0] !== "pedido") estP = null;
     if (!mantener) window.scrollTo(0, 0);
     app.focus({ preventScroll: true });
   }
