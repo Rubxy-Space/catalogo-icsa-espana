@@ -20,7 +20,7 @@
   --sombra: 0 1px 2px rgba(16, 34, 58, .06), 0 6px 18px rgba(16, 34, 58, .07);
   --fuente: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --cabecera: 140px;
+  --cabecera: 154px;
   color-scheme: light;
 }
 
@@ -48,12 +48,11 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 
 /* ---------------------------------------------------------------- cabecera */
 .cabecera { position: sticky; top: 0; z-index: 40; background: rgba(255, 255, 255, .97); border-bottom: 1px solid var(--linea); backdrop-filter: saturate(1.4) blur(8px); }
-.cabecera__fila { display: flex; align-items: center; gap: 16px; height: 92px; }
-/* logotipo con más presencia (petición de Sebalcab): 68 px de alto en escritorio, 46 px en móvil */
+.cabecera__fila { display: flex; align-items: center; gap: 16px; height: 106px; }
+/* logotipo ICSA España nuevo con más presencia (petición de Sebalcab): 88 px de alto en escritorio, 58 px en móvil */
 .marca { display: flex; align-items: center; gap: 14px; text-decoration: none; color: var(--azul); flex: none; }
-.marca img { height: 68px; width: auto; }
+.marca img { height: 88px; width: auto; }
 .marca__texto { font-weight: 600; font-size: 14px; line-height: 1.25; color: var(--azul); padding-left: 14px; border-left: 1px solid var(--linea); }
-.marca__texto span { display: block; font-weight: 500; color: var(--tinta-2); }
 .estado-beta { font-size: 11px; font-weight: 600; color: var(--azul); background: var(--azul-claro); border-radius: 999px; padding: 2px 8px; }
 
 /* franja «Venta exclusivamente a profesionales» en todas las páginas menos la portada, que lo lleva bajo el título */
@@ -436,10 +435,10 @@ table.tabla { border-collapse: separate; border-spacing: 0; width: 100%; font-si
 @media (max-width: 720px) {
   .equivs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .faceta__t { width: 100%; }
-  :root { --cabecera: 176px; }
+  :root { --cabecera: 186px; }
   .envoltura { padding: 0 16px; }
   .cabecera__fila { flex-wrap: wrap; height: auto; padding-top: 10px; padding-bottom: 10px; row-gap: 10px; }
-  .marca img { height: 46px; }
+  .marca img { height: 58px; }
   .marca { gap: 10px; }
   .marca__texto { font-size: 12px; padding-left: 10px; }
   .estado-beta { display: none; }

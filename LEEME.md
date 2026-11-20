@@ -30,8 +30,8 @@ En toda la web el nombre es «Catálogo General ICSA España», sin año (petici
 
 Correo «Propuesta de mejoras y modificaciones en la web de ICSA España»:
 
-1. Logotipo más grande en la cabecera (68 px de alto en escritorio, 46 px en móvil). Pendiente: sustituir
-   `img/marca/logo-icsa.png` por el logotipo nuevo que Sebalcab envió a Víctor (aún no lo tenemos en archivo).
+1. Logotipo nuevo de ICSA España (`img/marca/logo-icsa-espana.png`, original en `_fuente/logo-icsa-espana-original.webp`),
+   más grande en la cabecera: 88 px de alto en escritorio y 58 px en móvil. El favicon sale del mismo logo.
 2. Azul corporativo de ICSA (#034EA2 en el PDF) en menús, botones, títulos, fondos destacados, enlaces, iconos y pie.
    Solo conservan otro color los avisos de errata («Revisar») y los errores.
 3. «Venta exclusivamente a profesionales»: grande y en azul bajo el título de la portada, y en una franja
