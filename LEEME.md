@@ -1,7 +1,8 @@
-# Catálogo interactivo ICSA España 2026 (beta)
+# Catálogo General ICSA España (beta interactiva)
 
 Web estática, sin dependencias, generada a partir del PDF oficial
 `CATALOGO_IC_w011.pdf` publicado en icsacerraduras.es (104 páginas, noviembre 2026).
+En toda la web el nombre es «Catálogo General ICSA España», sin año (petición de Sebalcab del 20/11/2026).
 
 - 50 modelos, 93 versiones y 2.582 códigos en 8 familias.
 - Fotos reales sacadas de las imágenes originales del PDF, sin textos superpuestos.
@@ -24,6 +25,23 @@ Web estática, sin dependencias, generada a partir del PDF oficial
   cantidades o imprimirlo. Si alguien cambia el enlace, el código de control no cuadra y la página lo avisa en rojo.
   Límite: el código detecta cambios, pero no es una firma criptográfica; para un envío que el cliente no pueda tocar en
   absoluto hace falta un servicio de envío (formulario con servidor propio o tipo Formspree).
+
+## Cambios pedidos por Sebalcab (20/11/2026, primera fase)
+
+Correo «Propuesta de mejoras y modificaciones en la web de ICSA España»:
+
+1. Logotipo más grande en la cabecera (68 px de alto en escritorio, 46 px en móvil). Pendiente: sustituir
+   `img/marca/logo-icsa.png` por el logotipo nuevo que Sebalcab envió a Víctor (aún no lo tenemos en archivo).
+2. Azul corporativo de ICSA (#034EA2 en el PDF) en menús, botones, títulos, fondos destacados, enlaces, iconos y pie.
+   Solo conservan otro color los avisos de errata («Revisar») y los errores.
+3. «Venta exclusivamente a profesionales»: grande y en azul bajo el título de la portada, y en una franja
+   superior en el resto de páginas y en el pie.
+4. «Doble cilindro» pasa a «Cilindro» (y «2170 doble cilindro» a «2170 cilindro exterior e interior»). En
+   `_generador/productos.py` esas versiones llevan `alias=ALIAS_DOBLE`, así que buscar «doble cilindro» sigue funcionando.
+5. Nombre único «Catálogo General ICSA España» en títulos, ruta, pie, enlace de descarga del PDF y textos.
+6. Marcas de otros fabricantes: se mantienen logos y referencias, con el texto aclaratorio que propuso Sebalcab en el
+   apartado de compatibilidades, en cada ficha y en el pie. Las equivalencias son las de la tabla de junio de 2026:
+   Sebalcab debe confirmar que son correctas.
 
 ## Abrirlo
 

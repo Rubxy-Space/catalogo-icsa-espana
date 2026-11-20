@@ -1,4 +1,4 @@
-/* Catálogo ICSA España 2026 · lógica de la interfaz (sin dependencias) */
+/* Catálogo General ICSA España · lógica de la interfaz (sin dependencias) */
 (function () {
   "use strict";
 
@@ -26,6 +26,8 @@
     borrar: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
     externo: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
     aviso: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/></svg>',
+    info: '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
+    maletin: '<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18"/></svg>',
     correo: '<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
     tabla: '<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/></svg>'
   };
@@ -71,7 +73,7 @@
       });
     });
     p.texto = plano([p.nombre, p.sub, p.mod, p.art, FAM[p.fam].nombre].concat(
-      p.variantes.map(function (v) { return v.nombre + " " + (v.art || ""); })).join(" "));
+      p.variantes.map(function (v) { return v.nombre + " " + (v.alias || "") + " " + (v.art || ""); })).join(" "));
   });
   D.familias.forEach(function (f) {
     f.nCodigos = D.productos.filter(function (p) { return p.fam === f.id; })
@@ -100,20 +102,23 @@
   }
   var N_EQUIV = CMP.filas.reduce(function (s, f) { return s + Object.keys(f.refs).length; }, 0);
   function hrefCompat(f) { return f.pid ? "#/p/" + f.pid + (f.vid ? "/" + f.vid : "") + "?compat=1" : "#/compatibilidades?q=" + encodeURIComponent(f.art); }
+  // aclaración sobre marcas de terceros, con el texto propuesto por Sebalcab (20/11/2026)
+  var ACLARACION = "Las marcas y referencias de otros fabricantes se mencionan exclusivamente con fines identificativos e informativos para indicar equivalencias y compatibilidades con los productos ICSA. Todas las marcas pertenecen a sus respectivos titulares. Su mención no implica afiliación, representación ni relación comercial con dichos fabricantes.";
+  function aclaracionHTML() { return '<div class="aclaracion">' + ICO.info + "<p>" + ACLARACION + "</p></div>"; }
   function compatProductoHTML(p) {
     var filas = compatDe(p);
     if (!filas.length) return "";
     return '<section class="compat" id="compatibilidades" aria-labelledby="tit-compat"><h2 id="tit-compat">Compatibilidades</h2>' +
-      '<p class="compat__intro">Sustituye a estas referencias de otras marcas, según la tabla de compatibilidades ICSA de junio de 2026. <a href="#/compatibilidades">Ver la tabla completa</a></p>' +
+      '<p class="compat__intro">Referencias de otros fabricantes que se pueden sustituir por este artículo ICSA, según la tabla de compatibilidades de ICSA. <a href="#/compatibilidades">Ver la tabla completa</a></p>' +
       gruposCompat(filas).map(function (g) {
         var v = g.vid && p.variantes.find(function (x) { return x.id === g.vid; });
         return '<div class="compat__grupo"><h3>ICSA ' + g.arts.map(esc).join(" · ") + (v ? " <small>" + esc(v.nombre) + "</small>" : "") + "</h3>" +
-          '<ul class="equivs">' + CMP.marcas.filter(function (m) { return g.refs[m]; }).map(function (m) {
+          '<p class="compat__equivale">Puede sustituir a:</p><ul class="equivs">' + CMP.marcas.filter(function (m) { return g.refs[m]; }).map(function (m) {
             return '<li class="equiv"><span class="equiv__logo">' + logoMarca(m) + '</span><span class="equiv__ref mono">' + esc(g.refs[m]) + "</span>" +
               '<span class="equiv__nombre">' + esc(m) + "</span>" +
               '<button class="icono-boton equiv__copiar" type="button" data-copiar="' + esc(g.refs[m]) + '" aria-label="Copiar referencia ' + esc(m + " " + g.refs[m]) + '">' + ICO.copiar + "</button></li>";
           }).join("") + "</ul></div>";
-      }).join("") + "</section>";
+      }).join("") + aclaracionHTML() + "</section>";
   }
 
   function resumenFila(v, f, k) {
@@ -225,7 +230,7 @@
   }
   function correoPedido(pd) {
     var uds = pd.o.i.reduce(function (s, x) { return s + x[1]; }, 0);
-    var cuerpo = "Pedido del catálogo ICSA España\n\n" +
+    var cuerpo = "Pedido desde el Catálogo General ICSA España\n\n" +
       "Número: " + pd.o.n + "\nCliente: " + pd.o.c.e + " (" + pd.o.c.p + ", " + pd.o.c.t + ")\n" +
       "Referencias: " + pd.o.i.length + " (" + uds + (uds === 1 ? " unidad" : " unidades") + ")\n\n" +
       "Pedido completo, tal y como se hizo en el catálogo:\n" + pd.enlace + "\n\n" +
@@ -395,7 +400,7 @@
       "<" + h + ' class="tarjeta__nombre">' + esc(p.nombre) + "</" + h + ">" +
       (p.destacado ? '<span class="etiqueta">' + esc(p.destacado) + "</span>" : "") +
       '<span class="tarjeta__meta">' + meta + "</span>" +
-      (p.nMarcas ? '<span class="tarjeta__compat">Equivale a ' + p.nMarcas + (p.nMarcas === 1 ? " marca" : " marcas") + "</span>" : "") + "</div></a>";
+      (p.nMarcas ? '<span class="tarjeta__compat">Equivalencias con ' + p.nMarcas + (p.nMarcas === 1 ? " marca" : " marcas") + "</span>" : "") + "</div></a>";
   }
   function panelFamilia(fid) {
     var pn = D.paneles[fid];
@@ -403,13 +408,13 @@
     if (pn.colores) {
       return '<div class="panel panel--solo"><div class="panel__txt"><h3>' + esc(pn.titulo) + '</h3><div class="ral">' +
         pn.colores.map(function (c) { return '<div><i style="background:' + esc(c[2]) + '"></i><span><b>' + esc(c[0]) + "</b>" + esc(c[1]) + "</span></div>"; }).join("") +
-        '</div><p class="plano-pie">Colores orientativos en pantalla. Página ' + pn.pag + ' del <a href="' + pdfPag(pn.pag) + '" target="_blank" rel="noopener">catálogo PDF</a>.</p></div></div>';
+        '</div><p class="plano-pie">Colores orientativos en pantalla. Página ' + pn.pag + ' del <a href="' + pdfPag(pn.pag) + '" target="_blank" rel="noopener">Catálogo General ICSA España (PDF)</a>.</p></div></div>';
     }
     return '<div class="panel">' +
       (pn.imagen ? '<div class="panel__img"><img src="' + esc(pn.imagen.src) + '" alt="Esquema de los sistemas de amaestramiento KD, KA, MK y GMK" loading="lazy"></div>' : "") +
       '<div class="panel__txt"><h3>' + esc(pn.titulo) + "</h3><dl>" +
       pn.items.map(function (it) { return "<dt>" + esc(it[0]) + "</dt><dd>" + esc(it[1]) + "</dd>"; }).join("") +
-      '</dl><p class="plano-pie">Páginas 34 y 35 del <a href="' + pdfPag(pn.pag) + '" target="_blank" rel="noopener">catálogo PDF</a>. Los maletines C5MK, C6MK y S10MK permiten igualar y amaestrar en taller.</p></div></div>';
+      '</dl><p class="plano-pie">Páginas 34 y 35 del <a href="' + pdfPag(pn.pag) + '" target="_blank" rel="noopener">Catálogo General ICSA España (PDF)</a>. Los maletines C5MK, C6MK y S10MK permiten igualar y amaestrar en taller.</p></div></div>';
   }
   function seccionFamilia(f, conEnlace) {
     var ps = D.productos.filter(function (p) { return p.fam === f.id; });
@@ -487,10 +492,11 @@
   // ------------------------------------------------------------------ vistas
   function vistaInicio() {
     marcarNav(null);
-    document.title = "Catálogo ICSA España 2026 · SBC Grupo Sebalcab";
+    document.title = "Catálogo General ICSA España · SBC Grupo Sebalcab";
     app.innerHTML =
       '<section class="portada"><div class="envoltura portada__rejilla"><div>' +
-      "<h1>Catálogo ICSA <span>España 2026</span></h1>" +
+      "<h1>Catálogo General <span>ICSA España</span></h1>" +
+      '<p class="solo-pro">' + ICO.maletin + "<span>Venta exclusivamente a profesionales</span></p>" +
       '<p class="portada__texto">Cilindros, cerraduras, cierrapuertas, antipánicos y candados con su foto real, sus medidas y su código. Escribe en el buscador lo que necesitas como lo pedirías, por ejemplo «hs6 30x40 níquel» o «102 inox 25», o entra por familia.</p>' +
       '<ul class="cifras"><li><strong>' + D.productos.length + "</strong><span>modelos</span></li><li><strong>" + num(IDX.length) +
       "</strong><span>códigos</span></li><li><strong>" + N_EQUIV + '</strong><span><a href="#/compatibilidades">equivalencias con ' + CMP.marcas.length + " marcas</a></span></li></ul>" +
@@ -501,10 +507,10 @@
   function vistaFamilia(fid) {
     marcarNav(fid);
     var f = FAM[fid];
-    document.title = f.nombre + " · Catálogo ICSA España 2026";
+    document.title = f.nombre + " · Catálogo General ICSA España";
     var html = seccionFamilia(f, false).replace('<h2 id="fam-' + fid + '">' + esc(f.nombre) + "</h2>", '<h1 id="fam-' + fid + '" class="familia__h1">' + esc(f.nombre) + "</h1>");
     if (fid === "cilindros") html = html.replace('<div class="rejilla">', '<div class="familia__calc">' + calculadoraHTML() + '</div><div class="rejilla">');
-    app.innerHTML = '<div class="envoltura"><nav class="migas" aria-label="Ruta"><a href="#/">Catálogo</a> › ' + esc(f.nombre) + "</nav></div>" + html;
+    app.innerHTML = '<div class="envoltura"><nav class="migas" aria-label="Ruta"><a href="#/">Catálogo General</a> › ' + esc(f.nombre) + "</nav></div>" + html;
   }
 
   // ---- ficha de producto
@@ -623,16 +629,16 @@
     }
     est = { p: p, v: v, filtros: {}, texto: "", img: 0, ref: ref || null, visibles: 0 };
     var f = FAM[p.fam];
-    document.title = p.mod + " " + p.art + " · " + p.nombre + " · ICSA España";
+    document.title = p.mod + " " + p.art + " · " + p.nombre + " · Catálogo General ICSA España";
     var largos = [];
     p.variantes.forEach(function (x) { var k = x.cols.indexOf("L"); if (k >= 0) x.filas.forEach(function (r) { if (+r[k]) largos.push(+r[k]); }); });
     var dato3 = largos.length
       ? "<div><dt>Largo L</dt><dd>" + Math.min.apply(null, largos) + " a " + Math.max.apply(null, largos) + " mm</dd></div>"
-      : "<div><dt>Catálogo PDF</dt><dd>Página " + p.pag + "</dd></div>";
+      : "<div><dt>Catálogo General (PDF)</dt><dd>Página " + p.pag + "</dd></div>";
     var rel = D.productos.filter(function (x) { return x.fam === p.fam && x.id !== p.id; });
     var cfP = compatDe(p), marcasP = marcasDe(cfP);
     app.innerHTML = '<div class="envoltura">' +
-      '<nav class="migas" aria-label="Ruta"><a href="#/">Catálogo</a> › <a href="#/f/' + f.id + '">' + esc(f.nombre) + "</a></nav>" +
+      '<nav class="migas" aria-label="Ruta"><a href="#/">Catálogo General</a> › <a href="#/f/' + f.id + '">' + esc(f.nombre) + "</a></nav>" +
       '<section class="ficha"><div class="galeria" id="galeria">' + galeriaHTML() + "</div>" +
       '<div class="ficha__info"><p class="ficha__ref">MOD <b>' + esc(p.mod) + "</b> · ART. <b>" + esc(p.art) + "</b></p>" +
       "<h1>" + esc(p.nombre) + "</h1>" + '<p class="ficha__sub">' + esc(p.sub) + "</p>" +
@@ -640,7 +646,7 @@
       (p.variantes.length > 1 ? '<div class="versiones"><p class="versiones__t">Versiones</p><div>' + p.variantes.map(function (x) {
         return '<a href="#/p/' + p.id + "/" + x.id + '" data-ver-var="' + x.id + '">' + esc(x.nombre) + "</a>";
       }).join("") + "</div></div>" : "") +
-      (cfP.length ? '<div class="compat-tira"><p class="versiones__t">Sustituye a referencias de</p><a class="compat-tira__logos" href="#compatibilidades" data-ir="compatibilidades" aria-label="Ver compatibilidades con ' + esc(marcasP.join(", ")) + '">' +
+      (cfP.length ? '<div class="compat-tira"><p class="versiones__t">Puede sustituir a referencias de</p><a class="compat-tira__logos" href="#compatibilidades" data-ir="compatibilidades" aria-label="Ver compatibilidades con ' + esc(marcasP.join(", ")) + '">' +
         marcasP.map(function (m) { return logoMarca(m, "logo-mini"); }).join("") + "</a></div>" : "") +
       '<div class="ficha__acciones"><a class="boton" href="#referencias" data-ir-ref>' + ICO.tabla + "Ver referencias</a>" +
       '<a class="boton boton--sec" href="' + pdfPag(p.pag) + '" target="_blank" rel="noopener">' + ICO.externo + "Página " + p.pag + " del PDF</a></div>" +
@@ -810,7 +816,7 @@
         return '<div class="sug" role="option" id="sug-' + (n++) + '" data-href="' + href + '"><a class="sug__enlace" href="' + href + '" tabindex="-1">' +
           '<span class="sug__logo">' + logoMarca(m, "logo-sug") + "</span>" +
           '<span class="sug__txt"><span class="sug__t">' + esc(m + " " + f.refs[m]) + " = ICSA " + esc(f.art) + '</span><span class="sug__d">' +
-          (pr ? esc(tituloProducto(pr) + " · " + pr.nombre) : "No está en el catálogo España 2026") + "</span></span></a></div>";
+          (pr ? esc(tituloProducto(pr) + " · " + pr.nombre) : "No está en el Catálogo General ICSA España") + "</span></span></a></div>";
       }).join("") + (comp.length > 4 ? '<a class="sugerencias__todo" href="#/compatibilidades?q=' + encodeURIComponent(q.value.trim()) + '">Ver las ' + comp.length + " equivalencias</a>" : "");
       if (r.sinPalabra) { bloqueCod = ""; bloqueMod = ""; r = { refs: [], prods: [], entendido: [] }; }
     }
@@ -915,7 +921,7 @@
     q.value = texto;
     var r = buscar(texto) || { prods: [], refs: [], toks: [], entendido: [] };
     estB = { r: r, fac: {} };
-    document.title = "Buscar «" + texto + "» · Catálogo ICSA España";
+    document.title = "Buscar «" + texto + "» · Catálogo General ICSA España";
     var modelos = r.prods.length ? '<h2>Modelos</h2><div class="rejilla">' + r.prods.map(function (p) { return tarjeta(p); }).join("") + "</div>" : "";
     var codigos = r.refs.length ? '<h2>Códigos</h2><div id="res-codigos">' + tablaBusqueda() + "</div>" : "";
     var comp = MOTOR.buscarCompat(texto);
@@ -947,7 +953,7 @@
   // ---- apartado de compatibilidades
   function celdaProducto(f) {
     var pr = f.pid && PROD[f.pid];
-    if (!pr) return '<span class="fuera">No está en el catálogo España 2026</span>';
+    if (!pr) return '<span class="fuera">No está en el Catálogo General ICSA España</span>';
     var v = f.vid && pr.variantes.find(function (x) { return x.id === f.vid; });
     return '<a class="compat-prod" href="' + hrefCompat(f) + '"><img src="' + esc(pr.foto.mini) + '" alt=""><span><b>' + esc(tituloProducto(pr)) + "</b>" +
       esc(pr.nombre + (v ? " · " + v.nombre : "")) + "</span></a>";
@@ -1014,17 +1020,18 @@
   function vistaCompat(q0, m0) {
     marcarNav("compat");
     estC = { q: q0 || "", m: CMP.marcas.indexOf(m0) >= 0 ? m0 : "" };
-    document.title = "Compatibilidades con otras marcas · Catálogo ICSA España";
+    document.title = "Compatibilidades con otros fabricantes · Catálogo General ICSA España";
     app.innerHTML = '<div class="envoltura pagina">' +
-      "<h1>Compatibilidades con otras marcas</h1>" +
-      '<p class="pagina__sub">Encuentra el artículo ICSA que sustituye a una cerradura de otra marca: ' + N_EQUIV + " equivalencias de " + CMP.filas.length +
-      " artículos ICSA con " + CMP.marcas.length + " marcas, según la tabla de compatibilidades ICSA de junio de 2026.</p>" +
+      "<h1>Compatibilidades con otros fabricantes</h1>" +
+      '<p class="pagina__sub">Encuentra el artículo ICSA que puede sustituir a una referencia de otro fabricante: ' + N_EQUIV + " equivalencias de " + CMP.filas.length +
+      " artículos ICSA con " + CMP.marcas.length + " marcas, según la tabla de compatibilidades de ICSA (junio de 2026).</p>" +
+      aclaracionHTML() +
       '<div class="compat-busca"><div class="campo campo--texto"><label for="c-q">Referencia de otra marca o artículo ICSA</label>' +
       '<input id="c-q" type="search" autocomplete="off" placeholder="Ej.: 2210, 741-7411 o 1134" value="' + esc(estC.q) + '"></div></div>' +
       '<div class="marcas-chips" role="group" aria-label="Filtrar por marca" id="chips-marca">' + chipsMarcas() + "</div>" +
       '<div id="compat-res">' + compatResHTML() + "</div>" +
       '<p class="plano-pie">' + (CMP.marcas_vacias && CMP.marcas_vacias.length ? esc(CMP.marcas_vacias.join(", ")) + " aparece en la tabla sin equivalencias. " : "") +
-      "Los artículos fuera del catálogo España 2026 se pueden pedir a Sebalcab; confirma disponibilidad.</p></div>";
+      "Los artículos que no están en el Catálogo General ICSA España se pueden pedir a Sebalcab; confirma disponibilidad.</p></div>";
   }
   function repintarCompat() {
     document.getElementById("compat-res").innerHTML = compatResHTML();
@@ -1058,12 +1065,12 @@
     var txt = null, o = null;
     try { txt = b64Dec(token || ""); o = JSON.parse(txt); } catch (e) { o = null; }
     if (!o || !o.i || !o.c) {
-      document.title = "Pedido no válido · ICSA España";
+      document.title = "Pedido no válido · Catálogo General ICSA España";
       app.innerHTML = '<div class="envoltura pagina"><h1>Este enlace de pedido no es válido</h1><p>Puede que se haya cortado al copiarlo. Pide al cliente que lo vuelva a enviar desde el catálogo.</p></div>';
       return;
     }
     var ok = codigoControl(txt) === ctrl;
-    document.title = "Pedido " + o.n + " · ICSA España";
+    document.title = "Pedido " + o.n + " · Catálogo General ICSA España";
     var uds = 0;
     var filas = o.i.map(function (it) {
       var cod = it[0], cant = +it[1] || 0;
@@ -1106,13 +1113,15 @@
     var h = location.hash.replace(/^#/, "") || "/";
     var partes = h.split("?"), ruta = partes[0], params = new URLSearchParams(partes[1] || "");
     var seg = ruta.split("/").filter(Boolean).map(function (s) { try { return decodeURIComponent(s); } catch (e) { return s; } });
-    var mantener = false;
+    var mantener = false, portada = false;
     if (seg[0] === "f" && FAM[seg[1]]) vistaFamilia(seg[1]);
     else if (seg[0] === "p" && PROD[seg[1]]) mantener = vistaProducto(PROD[seg[1]], seg[2], params.get("ref"), params.get("compat"));
     else if (seg[0] === "compatibilidades") vistaCompat(params.get("q"), params.get("m"));
     else if (seg[0] === "pedido") vistaPedido(seg[1], seg[2]);
     else if (seg[0] === "buscar" && seg[1]) vistaBusqueda(seg.slice(1).join("/"));
-    else { est = null; vistaInicio(); }
+    else { est = null; portada = true; vistaInicio(); }
+    // la portada ya dice «Venta exclusivamente a profesionales» bajo el título: sin franja arriba
+    document.documentElement.classList.toggle("en-portada", portada);
     if (seg[0] !== "p") est = null;
     if (seg[0] !== "buscar") estB = null;
     if (seg[0] !== "compatibilidades") estC = null;

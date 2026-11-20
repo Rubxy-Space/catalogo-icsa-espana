@@ -77,6 +77,9 @@
       return r;
     }
 
+    // nombre de versión con su alias de búsqueda («doble cilindro» se busca aunque se muestre «Cilindro»)
+    function nombreV(v) { return v.nombre + " " + (v.alias || "") + " " + (v.art || ""); }
+
     D.productos.forEach(function (p, pi) {
       var base = palabrasUnidas([p.nombre, p.mod, p.art, FAM[p.fam].nombre].join(" "))
         .concat(palabras(p.sub, true));
@@ -89,14 +92,14 @@
       palabrasUnidas([p.nombre, p.mod, FAM[p.fam].nombre].join(" ")).forEach(function (w) { nw[w] = 1; });
       var pvw = {};
       if (p.variantes.length > 1) p.variantes.forEach(function (v) {
-        palabrasUnidas(v.nombre + " " + (v.art || "")).forEach(function (w) { pvw[w] = 1; });
+        palabrasUnidas(nombreV(v)).forEach(function (w) { pvw[w] = 1; });
       });
       p.variantes.forEach(function (v, vi) {
-        palabrasUnidas(v.nombre + " " + (v.art || "")).forEach(function (w) { docP.pw[w] = 1; });
-        var vPal = palabras(v.nombre).filter(function (w) { return !GENERICAS[w]; });
+        palabrasUnidas(nombreV(v)).forEach(function (w) { docP.pw[w] = 1; });
+        var vPal = palabras(v.nombre + " " + (v.alias || "")).filter(function (w) { return !GENERICAS[w]; });
         var vw = {};
         var xwV = compatDe(p.id, v.id);
-        palabrasUnidas(v.nombre + " " + (v.art || "")).forEach(function (w) { vw[w] = 1; });
+        palabrasUnidas(nombreV(v)).forEach(function (w) { vw[w] = 1; });
         var ci = [];
         v.cols.forEach(function (c, k) { if (COLS_CODIGO.indexOf(c) >= 0) ci.push(k); });
         if (!ci.length && v.cols.indexOf("Art.") >= 0) ci.push(v.cols.indexOf("Art."));
@@ -120,7 +123,7 @@
             };
             base.forEach(function (w) { e.pw[w] = 1; });
             for (var x in xwV) e.pw[x] = 1;
-            palabrasUnidas(v.nombre + " " + (v.art || "")).forEach(function (w) { e.pw[w] = 1; });
+            palabrasUnidas(nombreV(v)).forEach(function (w) { e.pw[w] = 1; });
             for (var w in cw) e.cw[w] = 1;
             if (v.cols[k] === "Latón") { e.cw.laton = 1; vcw.laton = 1; }
             if (v.cols[k] === "Níquel") { e.cw.niquel = 1; e.cw.niquelado = 1; vcw.niquel = 1; }

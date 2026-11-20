@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Definición del catálogo ICSA España 2026 (fuente: _fuente/CATALOGO_IC_w011.pdf).
+"""Definición del Catálogo General ICSA España (fuente: _fuente/CATALOGO_IC_w011.pdf).
 
 Cada producto apunta a sus páginas del PDF. Las fotos se toman de las imágenes
 originales incrustadas en el PDF (fotos reales, sin retoque); las tablas de
@@ -15,7 +15,7 @@ CAJA2 = ["Caja", "Embalaje"]
 
 FAMILIAS = [
     {"id": "cilindros", "nombre": "Cilindros", "pag": 3,
-     "texto": "Perfil europeo y ovalado, de serreta a alta seguridad con certificación SKG***. Doble, doble embrague, con pomo y medio cilindro."},
+     "texto": "Perfil europeo y ovalado, de serreta a alta seguridad con certificación SKG***. Versiones: cilindro, doble embrague, con pomo y medio cilindro."},
     {"id": "metalica", "nombre": "Carpintería metálica", "pag": 36,
      "texto": "Cerraduras de embutir para perfil metálico, multipunto, cortafuego y multiuso, con sus cerraderos, rosetas y packs."},
     {"id": "madera", "nombre": "Carpintería de madera", "pag": 55,
@@ -282,8 +282,15 @@ F_A6 = [
 # --------------------------------------------------------------------------
 # Productos
 # --------------------------------------------------------------------------
-def cil(nombre, pag, tablas, art, foto=None):
-    return {"nombre": nombre, "pag": pag, "art": art, "tipo": "cil", "tablas": tablas, "foto": foto, "plano": "auto"}
+# Sebalcab (20/11/2026): en la web se dice «Cilindro», no «Doble cilindro».
+# El alias mantiene la búsqueda por «doble cilindro» sin mostrarlo.
+ALIAS_DOBLE = "doble cilindro"
+
+def cil(nombre, pag, tablas, art, foto=None, alias=None):
+    v = {"nombre": nombre, "pag": pag, "art": art, "tipo": "cil", "tablas": tablas, "foto": foto, "plano": "auto"}
+    if alias:
+        v["alias"] = alias
+    return v
 
 def t(pag, idx, cols, extra=None):
     return {"pag": pag, "t": idx, "cols": cols, "extra": extra or {}}
@@ -297,7 +304,7 @@ PRODUCTOS = [
      "sub": "Perfil europeo, 10 pernos, antibumping y antipicking",
      "foto": ("x", 5, 2492, None), "ficha": F_HS10, "destacado": "EN 1303 · grado 6",
      "variantes": [
-         cil("Doble cilindro", 6, [6.0], "HS10"),
+         cil("Cilindro", 6, [6.0], "HS10", alias=ALIAS_DOBLE),
          cil("Doble embrague", 7, [7.0], "HS10/F"),
          cil("Con pomo de zamak", 8, [8.0], "HS10 168Z"),
      ]},
@@ -306,7 +313,7 @@ PRODUCTOS = [
      "sub": "Perfil europeo con rotura controlada y pernos antitaladro",
      "foto": ("x", 9, 4441, None), "ficha": F_HS6PRO, "destacado": "Rotura controlada",
      "variantes": [
-         cil("Doble cilindro", 10, [10.0], "HS6 PRO"),
+         cil("Cilindro", 10, [10.0], "HS6 PRO", alias=ALIAS_DOBLE),
          cil("Doble embrague", 11, [11.0, 11.1], "HS6 PRO/F"),
          cil("Con pomo de zamak", 12, [12.0], "HS6 PRO 168Z"),
          cil("Medio cilindro", 14, [14.0, 14.1], "HS6 PRO medio"),
@@ -316,7 +323,7 @@ PRODUCTOS = [
      "sub": "Perfil europeo, 6 pernos, llave plana reversible",
      "foto": ("x", 13, 6255, None), "ficha": F_HS6, "destacado": "Llave reversible",
      "variantes": [
-         cil("Doble cilindro", 15, [15.0], "HS6"),
+         cil("Cilindro", 15, [15.0], "HS6", alias=ALIAS_DOBLE),
          cil("Doble embrague", 16, [16.0, 16.1], "HS6/F"),
          cil("Con pomo de zamak", 17, [17.0], "HS6 168Z"),
          cil("Medio cilindro", 18, [18.0, 18.1], "HS6 medio"),
@@ -326,7 +333,7 @@ PRODUCTOS = [
      "sub": "Perfil europeo con insertos antitaladro y certificación SKG de tres estrellas",
      "foto": ("x", 19, 8384, None), "ficha": F_S3, "destacado": "SKG***",
      "variantes": [
-         cil("Doble cilindro", 20, [20.0], "149"),
+         cil("Cilindro", 20, [20.0], "149", alias=ALIAS_DOBLE),
          cil("Doble embrague", 21, [21.0], "149/F D.E."),
          cil("Con pomo de latón", 22, [22.0], "164 pomo"),
          cil("Medio cilindro", 23, [23.0], "78 medio cilindro"),
@@ -336,7 +343,7 @@ PRODUCTOS = [
      "sub": "Perfil europeo de 5 pernos, la gama de uso general",
      "foto": ("x", 24, 9505, None), "ficha": F_C5, "destacado": "5 pernos",
      "variantes": [
-         cil("Doble cilindro serreta eco", 25, [25.0], "150"),
+         cil("Cilindro serreta eco", 25, [25.0], "150", alias=ALIAS_DOBLE),
          cil("Doble embrague", 26, [26.0, 26.1], "150/F"),
          cil("Con pomo de zamak", 27, [27.0, 27.1], "168/Z"),
          cil("Medio cilindro", 28, [28.0, 28.1], "75"),
@@ -346,7 +353,7 @@ PRODUCTOS = [
      "sub": "Perfil ovalado con leva redonda",
      "foto": ("f", "../ICSA/CILINDROS/C4/27X27/LATON/C42727L.jpg", (0.04, 0.03, 0.84, 0.8)), "ficha": F_C4, "destacado": "Leva redonda",
      "variantes": [
-         cil("Doble cilindro ovalado", 30, [30.0], "180"),
+         cil("Cilindro ovalado", 30, [30.0], "180", alias=ALIAS_DOBLE),
          dict(cil("Medio cilindro ovalado", 30, [30.1], "90"), plano=("x", 30, 11123, None)),
      ]},
     {"id": "maletines-mk", "fam": "cilindros", "mod": "MK/GMK", "art": "C5MK · C6MK · S10MK", "pag": 31,
@@ -601,8 +608,8 @@ PRODUCTOS = [
      "variantes": [
          {"nombre": "2770 cilindro y botón", "pag": 73, "art": "2770", "foto": ("x", 73, 16705, (0.55, 0.15, 1, 1)),
           "tablas": [t(73, 0, ["Derecha", "Izquierda", "DCF", "Código", "Caja", "Embalaje"])],
-          "nota": "Doble cilindro regulable."},
-         {"nombre": "2170 doble cilindro", "pag": 73, "art": "2170", "foto": ("x", 73, 16707, (0.58, 0, 1, 1)),
+          "nota": "Cilindro regulable."},
+         {"nombre": "2170 cilindro exterior e interior", "pag": 73, "art": "2170", "alias": ALIAS_DOBLE, "foto": ("x", 73, 16707, (0.58, 0, 1, 1)),
           "tablas": [t(73, 1, ["Derecha", "Izquierda", "E", "Código", "Caja", "Embalaje"])]},
      ]},
     {"id": "e76-evo", "fam": "garaje", "mod": "E76 EVO", "art": "2881", "pag": 74,
@@ -747,7 +754,7 @@ PANELES = {
 # --------------------------------------------------------------------------
 # Compatibilidades (fuente: _fuente/COMPATIBILIDADES_ICSA_JUNIO_2026.pdf)
 # Artículo ICSA de la tabla -> (producto del catálogo, versión o None si vale para todo el modelo)
-# Los artículos que no están aquí no aparecen en el catálogo España 2026: se muestran sin enlace.
+# Los artículos que no están aquí no aparecen en el Catálogo General ICSA España: se muestran sin enlace.
 # --------------------------------------------------------------------------
 COMPAT_PDF = "COMPATIBILIDADES_ICSA_JUNIO_2026.pdf"
 COMPAT_ENLACES = {

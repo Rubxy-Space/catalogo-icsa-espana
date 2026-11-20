@@ -3,26 +3,34 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Catálogo ICSA España 2026 · SBC Grupo Sebalcab</title>
-<meta name="description" content="Catálogo interactivo ICSA España 2026: cilindros, cerraduras, cierrapuertas, antipánicos y candados con foto real, medidas y código. Distribuidor oficial SBC Grupo Sebalcab.">
+<title>Catálogo General ICSA España · SBC Grupo Sebalcab</title>
+<meta name="description" content="Catálogo General ICSA España: cilindros, cerraduras, cierrapuertas, antipánicos y candados con foto real, medidas y código. Venta exclusivamente a profesionales. Distribuidor oficial SBC Grupo Sebalcab.">
 <meta name="theme-color" content="#034EA1">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="img/marca/logo-icsa.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/estilos.css?v=7">
+<link rel="stylesheet" href="assets/estilos.css?v=8">
+<script>/* evita que la franja de profesionales parpadee en portada */ if (!/^#\/(f|p|compatibilidades|pedido|buscar)(\/|\?|$)/.test(location.hash)) document.documentElement.classList.add("en-portada");</script>
 </head>
 <body>
 <a class="saltar" href="#app">Ir al contenido</a>
 
+<div class="franja-pro">
+  <div class="envoltura">
+    <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18"/></svg>
+    <span>Venta exclusivamente a profesionales</span>
+  </div>
+</div>
+
 <header class="cabecera">
   <div class="cabecera__fila envoltura">
-    <a class="marca" href="#/" aria-label="Catálogo ICSA España, inicio">
-      <img src="img/marca/logo-icsa.png" alt="ICSA Made in Italy" width="92" height="46">
-      <span class="marca__texto">España</span>
+    <a class="marca" href="#/" aria-label="Catálogo General ICSA España, inicio">
+      <img src="img/marca/logo-icsa.png" alt="ICSA Made in Italy" width="137" height="68">
+      <span class="marca__texto" aria-hidden="true">Catálogo General<span>ICSA España</span></span>
     </a>
-    <span class="estado-beta" title="Versión de prueba generada a partir del catálogo PDF España 2026">Beta</span>
+    <span class="estado-beta" title="Versión de prueba generada a partir del Catálogo General ICSA España en PDF">Beta</span>
 
     <div class="buscador" id="buscador">
       <label class="oculto" for="q">Buscar en el catálogo</label>
@@ -50,7 +58,7 @@
   <div class="envoltura pie__rejilla">
     <div>
       <img src="img/marca/logo-sbc.png" alt="SBC Grupo Sebalcab" width="150" height="76" loading="lazy">
-      <p>Distribuidor oficial ICSA en España.</p>
+      <p>Distribuidor oficial ICSA en España.<br>Venta exclusivamente a profesionales.</p>
     </div>
     <div>
       <h2 class="pie__titulo">Contacto</h2>
@@ -59,10 +67,14 @@
          Camino de la Xacona 40, 33204 Gijón (Asturias)</p>
     </div>
     <div>
-      <h2 class="pie__titulo">Fuente</h2>
-      <p>Fotos, medidas y códigos del <a href="https://icsacerraduras.es/img/catalogo/CATALOGO_IC_w011.pdf" target="_blank" rel="noopener">Catálogo general ICSA España 2026 (PDF)</a>. Versión beta: confirma precios y disponibilidad con Sebalcab.</p>
+      <h2 class="pie__titulo">Catálogo General ICSA España</h2>
+      <p><a href="https://icsacerraduras.es/img/catalogo/CATALOGO_IC_w011.pdf" target="_blank" rel="noopener">Descargar el Catálogo General ICSA España (PDF)</a></p>
+      <p>Fotos, medidas y códigos sacados del catálogo en PDF. Versión beta: confirma precios y disponibilidad con Sebalcab.</p>
       <p><a href="https://www.instagram.com/icsa_spain/" target="_blank" rel="noopener">Instagram @icsa_spain</a></p>
     </div>
+  </div>
+  <div class="envoltura pie__legal">
+    <p>Las marcas y referencias de otros fabricantes se mencionan exclusivamente con fines identificativos e informativos para indicar equivalencias y compatibilidades con los productos ICSA. Todas las marcas pertenecen a sus respectivos titulares. Su mención no implica afiliación, representación ni relación comercial con dichos fabricantes.</p>
   </div>
 </footer>
 
@@ -80,8 +92,8 @@
 
 <div class="aviso-flotante" id="aviso" role="status" aria-live="polite"></div>
 
-<script src="data/catalogo.js?v=7"></script>
-<script src="assets/buscador.js?v=7"></script>
-<script src="assets/app.js?v=7"></script>
+<script src="data/catalogo.js?v=8"></script>
+<script src="assets/buscador.js?v=8"></script>
+<script src="assets/app.js?v=8"></script>
 </body>
 </html>

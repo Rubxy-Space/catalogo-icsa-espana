@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Genera data/catalogo.js e img/ a partir del PDF del catálogo ICSA España 2026.
+"""Genera data/catalogo.js e img/ a partir del PDF del Catálogo General ICSA España.
 
 Uso:  python3 _generador/construir_catalogo.py
 Requiere PyMuPDF (fitz) y Pillow.
@@ -399,6 +399,8 @@ def construir():
                 vo["art"] = v["art"]
             if v.get("nota"):
                 vo["nota"] = v["nota"]
+            if v.get("alias"):
+                vo["alias"] = v["alias"]  # solo para el buscador
             if v.get("foto"):
                 vo["foto"] = foto(v["foto"], f"{pid}--{vid}")
             pl = plano_auto(vo["pag"]) if v.get("plano") == "auto" else v.get("plano")
@@ -478,7 +480,7 @@ def construir():
 
     datos = {
         "generado": datetime.date.today().isoformat(),
-        "fuente": {"titulo": "Catálogo general ICSA España 2026", "pdf": "https://icsacerraduras.es/img/catalogo/CATALOGO_IC_w011.pdf",
+        "fuente": {"titulo": "Catálogo General ICSA España", "pdf": "https://icsacerraduras.es/img/catalogo/CATALOGO_IC_w011.pdf",
                    "paginas": doc.page_count},
         "familias": fams,
         "productos": productos,
