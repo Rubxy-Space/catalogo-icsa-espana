@@ -107,6 +107,7 @@ def tablas_cil_pagina(pn):
         lv = norm_leva(" ".join(w[4] for w in wl if w[0] < 185))
         if lv:
             etiquetas.append((y, lv))
+    tipos = {lv.split()[0] for _, lv in etiquetas}
     tablas, actual, ultimo_y = [], [], None
     for f in filas:
         y = (f[3][1] + f[3][3]) / 2
@@ -117,6 +118,13 @@ def tablas_cil_pagina(pn):
         for ey, lv in etiquetas:
             if y >= ey - 8:
                 leva = lv
+        # El rótulo «LEVA CORTA» va a media altura de su bloque, así que las primeras filas del bloque
+        # quedaban con la leva anterior. En los códigos ICSA el último dígito dice la leva: 3 larga, 2 corta.
+        # Solo se corrige cuando el tipo no cuadra, con el rótulo de ese tipo más cercano.
+        if "Larga" in tipos and "Corta" in tipos:
+            tipo = {"3": "Larga", "2": "Corta"}.get(f[3][4].rstrip("-")[-1:])
+            if tipo and not leva.startswith(tipo):
+                leva = min((abs(ey - y), lv) for ey, lv in etiquetas if lv.startswith(tipo))[1]
         actual.append([leva] + [w[4] for w in f])
         ultimo_y = y
     if actual:
