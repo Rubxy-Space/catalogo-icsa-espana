@@ -4,3 +4,11 @@ _fuente/
 __pycache__/
 *.pyc
 _factusol/
+
+# Supabase: correo del primer CEO y archivos que crea la herramienta al enlazar el proyecto
+supabase/primer-ceo.sql
+supabase/.temp/
+supabase/.branches/
+# alta y accesos del equipo (datos de FactuSOL y contraseñas iniciales): solo en el Mac de Rubén
+supabase/accesos-equipo.md
+supabase/alta-equipo.sql

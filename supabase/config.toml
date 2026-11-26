@@ -1,0 +1,26 @@
+# Configuración mínima para la herramienta de Supabase (supabase functions deploy).
+# El proyecto real se elige con --project-ref; ver supabase/LEEME-supabase.md.
+project_id = "catalogo-icsa"
+
+[functions.panel-ceo]
+# la propia función comprueba la sesión y que quien llama es CEO
+verify_jwt = false
+
+# Ajustes de Auth del proyecto real. «supabase config push» sube todo lo de aquí y pone los valores por defecto de la
+# herramienta en lo que falte, así que se dejan escritos los que tiene el proyecto.
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = []
+enable_signup = false # las cuentas solo las crea el CEO
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[auth.email]
+enable_confirmations = true
+max_frequency = "1m0s"
+otp_length = 8
+
+[storage.vector]
+enabled = false

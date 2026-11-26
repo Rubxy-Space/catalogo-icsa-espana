@@ -43,6 +43,78 @@ Correo «Propuesta de mejoras y modificaciones en la web de ICSA España»:
    apartado de compatibilidades, en cada ficha y en el pie. Las equivalencias son las de la tabla de junio de 2026:
    Sebalcab debe confirmar que son correctas.
 
+## Cuentas del equipo comercial y panel CEO (24/11/2026, cambiado a comerciales el 25/11/2026)
+
+Rama `cuentas-login-ceo`, sin publicar. Hoy funciona solo en local, en modo de prueba; la web publicada no enseña
+el botón «Entrar» y las rutas de cuentas avisan de que el acceso aún no está activo.
+
+Las cuentas son solo para los comerciales de Sebalcab (unos 5). No hay solicitud de cuenta pública: el CEO las crea
+desde su panel y da a cada comercial una contraseña provisional.
+
+- Sin sesión no se ve el catálogo: cualquier dirección lleva a la entrada (`#/acceso`) y, al entrar, vuelve a la
+  página que se pedía (también los enlaces de pedido). Sin sesión se ocultan el buscador, las familias, el pedido y el
+  enlace al PDF; solo queda la entrada.
+- Cabecera: con la sesión abierta, botón «Mi cuenta» o «Panel CEO» (en móvil, solo el icono).
+- `#/acceso`: entrar con usuario y contraseña. Los comerciales tienen un usuario («juanperez»); por dentro es el
+  correo `usuario@usuarios.sebalcab.es`, que no existe ni recibe nada. Quien tenga un correo de verdad (el CEO) entra
+  con su correo. Avisa si la cuenta está bloqueada.
+- Contraseña provisional: las cuentas nuevas y las que tienen la contraseña restablecida solo pueden ver «Mi cuenta»
+  hasta que ponen una contraseña suya.
+- `#/cuenta`: teléfono, zona y código de agente en FactuSOL; el comercial puede cambiar su nombre, su teléfono y su
+  contraseña. La zona, el usuario y el código de agente los cambia el CEO.
+- `#/ceo`: panel CEO «Equipo comercial». Resumen por estado (activas, bloqueadas, total) que filtra la tabla,
+  buscador, tabla con teléfono, zona, agente FactuSOL, estado, último acceso («Hoy», «Hace 3 días») y botón «Quitar
+  acceso» o «Dar acceso» en cada fila, y exportación a CSV.
+- `#/ceo/cuenta/<id>`: ficha para cambiar nombre, teléfono, usuario, zona, código de agente, rol y notas internas;
+  quitar o dar el acceso (bloquear o desbloquear), generar una contraseña provisional (se enseña una sola vez) y eliminar. Historial con el
+  alta, el último bloqueo o desbloqueo y el último acceso. El CEO no puede bloquear, eliminar ni quitar el rol de CEO
+  a su propia cuenta.
+- `#/ceo/nueva`: «Nuevo comercial»; la cuenta queda activa con una contraseña provisional.
+- Pedido: con la sesión abierta, el formulario pide los «Datos del cliente» y el pedido lleva el nombre del comercial
+  y su código de agente (salen en la página del pedido y en el correo). «Otro cliente» borra los datos del cliente
+  anterior para no mandar un pedido a su nombre.
+
+Código: `assets/cuentas.js` (capa de datos) y el bloque «cuentas del equipo comercial y panel CEO» de `assets/app.js`.
+
+### Modo de prueba
+
+Se activa solo en el ordenador de desarrollo (servidor `catalogo-icsa`, http://localhost:8125). Guarda las cuentas en
+el navegador y no protege nada: sirve para ver y probar las pantallas. Cuentas inventadas para probar:
+
+| Usuario | Contraseña | Cuenta |
+|---|---|---|
+| ceo@demo.local | ceo-demo-2026 | CEO |
+| comercial1 a comercial4 | comercial-demo-2026 | comerciales activos |
+| comercial5 | comercial-demo-2026 | bloqueado |
+
+En la entrada, «Entrar de prueba como CEO o como comercial» abre la sesión sin escribir la contraseña, y
+`#/acceso?demo=ceo` entra directo al panel CEO. En el panel, «Volver a las cuentas de prueba iniciales» borra los
+cambios de prueba. Las cuentas de prueba de versiones anteriores (clientes profesionales, comerciales con correo) se
+borran solas al abrir esta.
+
+### Supabase (cuentas de verdad, preparado el 25/11/2026)
+
+`assets/cuentas.js` tiene dos modos con las mismas funciones, y las pantallas no cambian:
+- **Supabase.** Se activa al poner la dirección del proyecto y su clave pública en `assets/config-cuentas.js`.
+  Contraseñas, sesión y permisos los comprueba Supabase: un comercial no puede leer otras cuentas ni darse el rol de
+  CEO, y no ve las notas internas.
+- **Prueba.** Se usa con `assets/config-cuentas.js` vacío y solo en local.
+
+Todo lo de Supabase está en `supabase/`, con los pasos para montarlo en `supabase/LEEME-supabase.md`:
+- la tabla y los permisos;
+- la función del servidor `panel-ceo`;
+- el alta del primer CEO, en `supabase/primer-ceo.sql`, que no se sube a GitHub;
+- los usuarios y contraseñas iniciales del equipo, en `supabase/accesos-equipo.md`, que tampoco se sube.
+
+Para el equipo comercial (11 agentes en FactuSOL) basta el plan gratuito. Tiene dos pegas: se pausa si pasa una semana sin que nadie entre, y no
+hace copias de seguridad. El plan Pro cuesta 25 $ al mes. La cuenta de Supabase es de Sebalcab.
+
+Hoy el bloqueo es de la pantalla: los archivos del catálogo (`data/catalogo.js` y las imágenes) siguen siendo
+públicos en GitHub Pages para quien sepa la dirección. Para cerrarlos del todo, hay que pasarlos a un almacén privado
+de Supabase y que la web los pida con la sesión abierta, igual que los precios y el stock que vendrán de FactuSOL.
+
+Antes de publicar: visto bueno de Albert al diseño.
+
 ## Abrirlo
 
 Abre `index.html` en el navegador o sube la carpeta entera a cualquier hosting estático

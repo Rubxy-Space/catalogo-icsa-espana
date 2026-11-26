@@ -223,6 +223,8 @@
       c: {}, i: lista.map(function (x) { return [x.cod, x.cant, x.pid]; })
     };
     CAMPOS.forEach(function (f) { if (cliente[f.id]) o.c[f.id] = cliente[f.id]; });
+    // con la sesión abierta, el pedido lleva quién lo ha hecho (nombre, usuario y código de agente en FactuSOL)
+    if (yoCta) { o.r = { n: yoCta.nombre, m: CU.usuario(yoCta.email) }; if (yoCta.agente) o.r.a = yoCta.agente; }
     var txt = JSON.stringify(o);
     var cod = codigoControl(txt);
     var enlace = location.origin + location.pathname + "#/pedido/" + b64Cod(txt) + "/" + cod;
@@ -232,6 +234,7 @@
     var uds = pd.o.i.reduce(function (s, x) { return s + x[1]; }, 0);
     var cuerpo = "Pedido desde el Catálogo General ICSA España\n\n" +
       "Número: " + pd.o.n + "\nCliente: " + pd.o.c.e + " (" + pd.o.c.p + ", " + pd.o.c.t + ")\n" +
+      (pd.o.r ? "Comercial: " + pd.o.r.n + "\n" : "") +
       "Referencias: " + pd.o.i.length + " (" + uds + (uds === 1 ? " unidad" : " unidades") + ")\n\n" +
       "Pedido completo, tal y como se hizo en el catálogo:\n" + pd.enlace + "\n\n" +
       "Código de control: " + pd.control + "\n\n" +
@@ -280,7 +283,10 @@
         "</div>" +
         '<div class="item__desc">' + esc(x.titulo) + "<br>" + esc(x.desc) + "</div></div>";
     }).join("") +
-      '<form class="datos" id="form-pedido" novalidate><h3 class="lista__sub">Tus datos</h3>' +
+      '<form class="datos" id="form-pedido" novalidate>' + (yoCta
+        ? '<div class="datos__cabeza"><h3 class="lista__sub">Datos del cliente</h3>' +
+          (CAMPOS.some(function (f) { return cliente[f.id]; }) ? '<button class="enlace" type="button" data-otro-cliente>Otro cliente</button>' : "") + "</div>"
+        : '<h3 class="lista__sub">Tus datos</h3>') +
       CAMPOS.map(function (f) {
         var v = esc(cliente[f.id] || "");
         var etiqueta = '<label for="cli-' + f.id + '">' + esc(f.t) + (f.obl ? "" : ' <span class="opcional">(opcional)</span>') + "</label>";
@@ -353,6 +359,12 @@
       pedidoHecho = crearPedido();
       pintarLista();
       copiar(pedidoHecho.enlace, "Enlace del pedido " + pedidoHecho.o.n + " copiado");
+    } else if (b.hasAttribute("data-otro-cliente")) {
+      // el comercial pasa a otro cliente: se borran los datos del anterior para no mandar un pedido a su nombre
+      cliente = {}; pedidoHecho = null;
+      try { localStorage.removeItem(CLAVE_CLIENTE); } catch (e) { /* almacenamiento no disponible */ }
+      pintarLista(); avisar("Datos del cliente borrados");
+      var pe = document.getElementById("cli-e"); if (pe) pe.focus();
     } else if (b.hasAttribute("data-cerrar")) {
       cerrarLista();
     }
@@ -1066,7 +1078,7 @@
     try { txt = b64Dec(token || ""); o = JSON.parse(txt); } catch (e) { o = null; }
     if (!o || !o.i || !o.c) {
       document.title = "Pedido no válido · Catálogo General ICSA España";
-      app.innerHTML = '<div class="envoltura pagina"><h1>Este enlace de pedido no es válido</h1><p>Puede que se haya cortado al copiarlo. Pide al cliente que lo vuelva a enviar desde el catálogo.</p></div>';
+      app.innerHTML = '<div class="envoltura pagina"><h1>Este enlace de pedido no es válido</h1><p>Puede que se haya cortado al copiarlo. Pide que lo vuelvan a enviar desde el catálogo.</p></div>';
       return;
     }
     var ok = codigoControl(txt) === ctrl;
@@ -1088,14 +1100,15 @@
     app.innerHTML = '<div class="envoltura pagina pedido">' +
       "<h1>Pedido " + esc(o.n) + "</h1>" +
       (ok ? '<p class="sello sello--ok">' + ICO.hecho + "<span>Código de control correcto: <b>" + esc(ctrl) + "</b>. El pedido es el mismo que se hizo en el catálogo.</span></p>"
-        : '<p class="sello sello--mal">' + ICO.aviso + "<span>El código de control no coincide: el enlace se ha modificado después de hacer el pedido. Pide al cliente que lo vuelva a enviar desde el catálogo.</span></p>") +
-      '<dl class="pedido__datos">' + dato("Empresa", o.c.e) + dato("Contacto", o.c.p) + dato("Teléfono", o.c.t) + dato("Correo", o.c.m) + dato("Fecha", o.f) + "</dl>" +
+        : '<p class="sello sello--mal">' + ICO.aviso + "<span>El código de control no coincide: el enlace se ha modificado después de hacer el pedido. Pide que lo vuelvan a enviar desde el catálogo.</span></p>") +
+      '<dl class="pedido__datos">' + dato("Empresa", o.c.e) + dato("Contacto", o.c.p) + dato("Teléfono", o.c.t) + dato("Correo", o.c.m) + dato("Fecha", o.f) +
+      (o.r ? dato("Comercial", o.r.n + (o.r.a ? " (agente " + o.r.a + ")" : "")) : "") + "</dl>" +
       (o.c.o ? '<div class="pedido__obs"><h2>Observaciones</h2><p>' + esc(o.c.o) + "</p></div>" : "") +
       '<div class="tabla-caja"><table class="tabla"><thead><tr><th scope="col"><span class="oculto">Foto</span></th><th scope="col">Código</th><th scope="col">Producto</th><th scope="col">Detalle</th><th scope="col" class="num">Cantidad</th></tr></thead><tbody>' +
       filas + '</tbody><tfoot><tr><td colspan="4">' + o.i.length + (o.i.length === 1 ? " referencia" : " referencias") + '</td><td class="num"><b>' + uds + "</b></td></tr></tfoot></table></div>" +
       '<div class="ficha__acciones no-imprimir"><button class="boton" type="button" data-copiar-pedido>' + ICO.copiar + "Copiar códigos y cantidades</button>" +
       '<button class="boton boton--sec" type="button" data-imprimir>Imprimir</button></div>' +
-      '<p class="plano-pie">Página de solo lectura. Para cambiar el pedido, el cliente tiene que hacerlo de nuevo desde el catálogo.</p></div>';
+      '<p class="plano-pie">Página de solo lectura. Para cambiar el pedido hay que hacerlo de nuevo desde el catálogo.</p></div>';
     estP = o;
   }
   var estP = null;
@@ -1107,14 +1120,608 @@
     }
   });
 
+  // ------------------------------------------------------------------ cuentas del equipo comercial y panel CEO
+  // Las cuentas son para los comerciales de Sebalcab y las crea el CEO desde su panel: no hay solicitud pública.
+  // Las pantallas solo hablan con window.ICSACuentas (assets/cuentas.js). Sin servidor configurado y fuera
+  // del ordenador de desarrollo no hay cuentas: el botón «Entrar» no sale y las rutas avisan.
+  var CU = window.ICSACuentas || { disponible: false };
+  var botonCuenta = document.getElementById("boton-cuenta");
+  var yoCta = null;  // cuenta con la sesión abierta
+  var turno = 0;     // cada navegación suma uno: una respuesta tardía no pinta encima de otra pantalla
+  ICO.usuario = '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>';
+  ICO.escudo = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.4 8 8 9 4.6-1 8-4 8-9V6l-8-3z"/><path d="m9 12 2 2 4-4"/></svg>';
+  ICO.salir = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>';
+  ICO.descargar = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>';
+  ICO.llave = '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M14 9l2 2"/></svg>';
+  ICO.ojo = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+
+  var ESTADOS = { activa: "Activa", bloqueada: "Bloqueada" };
+  var ORDEN_ESTADO = { activa: 0, bloqueada: 1 };
+  var NOMBRE_FILTRO = { todas: "Total", activa: "Activas", bloqueada: "Bloqueadas" };
+  var ROLES = { comercial: "Comercial", ceo: "CEO" };
+  var F = {
+    nombre: { t: "Nombre y apellidos", obl: true, ac: "name", max: 60 },
+    telefono: { t: "Teléfono", obl: true, tipo: "tel", ac: "tel", max: 20 },
+    email: { t: "Usuario", obl: true, tipo: "usuario", ac: "username", max: 90 },
+    clave: { t: "Contraseña", obl: true, tipo: "password", ac: "new-password", max: 72, min: 8, ayuda: "Al menos 8 caracteres." },
+    zona: { t: "Zona", max: 80, ayuda: "Provincias o clientes que lleva, por ejemplo «Asturias y León»." },
+    agente: { t: "Código de agente en FactuSOL", max: 8, num: true, ayuda: "El de su ficha de agente. Se usará cuando el catálogo se conecte con FactuSOL." },
+    rol: { t: "Rol", sinOpcional: true, tipo: "select", ops: [["comercial", "Comercial"], ["ceo", "CEO (entra en este panel)"]] },
+    notas: { t: "Notas internas", tipo: "area", max: 500, ayuda: "Solo las ve el CEO." }
+  };
+  function spec(k, opc) { var s = { k: k }, f = F[k], x; for (x in f) s[x] = f[x]; for (x in opc || {}) s[x] = opc[x]; return s; }
+  var SPEC = {
+    entrar: [spec("email", { ayuda: "El que te dio la dirección, por ejemplo «juanperez». Si entras con tu correo, escríbelo." }),
+      spec("clave", { ac: "current-password", ayuda: "", min: 0 })],
+    contacto: [spec("nombre"), spec("telefono")],
+    clave: [spec("clave", { id: "actual", t: "Contraseña actual", ac: "current-password", ayuda: "", min: 0 }), spec("clave", { id: "nueva", t: "Contraseña nueva" })],
+    ficha: [spec("nombre"), spec("telefono"), spec("email", { ancho: true, ac: "off", ayuda: "Con el que entra: una palabra sin espacios, como «juanperez». Si prefiere entrar con su correo, escribe el correo." }),
+      spec("zona", { ancho: true }), spec("agente"), spec("rol"), spec("notas", { ancho: true })]
+  };
+  SPEC.nueva = SPEC.ficha;
+  var MSG = {
+    credenciales: "El usuario o la contraseña no son correctos.",
+    bloqueada: "Esta cuenta está bloqueada. Si crees que es un error, habla con la dirección de Sebalcab.",
+    existe: "Ya hay una cuenta con ese usuario.",
+    permiso: "Esta parte es solo para el CEO.",
+    propia: "No puedes bloquear, eliminar ni quitar el rol de CEO a tu propia cuenta.",
+    "no-existe": "Esa cuenta ya no existe.",
+    datos: "Revisa los datos: alguno no es válido.",
+    red: "No hay conexión con el servidor de cuentas. Revisa internet y vuelve a probar.",
+    "muchos-intentos": "Demasiados intentos seguidos. Espera unos minutos y vuelve a probar.",
+    "misma-clave": "La contraseña nueva tiene que ser distinta de la actual.",
+    "clave-debil": "Esa contraseña no vale: prueba con una más larga, con letras y números."
+  };
+  function msgError(e) { return MSG[e && e.codigo] || "No se ha podido completar. Inténtalo de nuevo."; }
+  function fecha(iso, hora) {
+    var d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d)) return "";
+    return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" }) +
+      (hora ? " " + d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : "");
+  }
+  // «Hoy, 10:32», «Ayer», «Hace 5 días» o la fecha: para ver de un vistazo quién lleva tiempo sin entrar
+  function haceCuanto(iso) {
+    var d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d)) return "";
+    var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    var dias = Math.round((hoy - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 864e5);
+    if (dias <= 0) return "Hoy, " + d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    if (dias === 1) return "Ayer";
+    return dias < 30 ? "Hace " + dias + " días" : fecha(iso);
+  }
+  function pastilla(estado) { return '<span class="pastilla pastilla--' + estado + '">' + ESTADOS[estado] + "</span>"; }
+  function avisoDemo(atajos) {
+    return CU.modo === "demo" ? '<p class="nota">' + ICO.info + "<span><b>Modo de prueba.</b> Las cuentas se guardan solo en este navegador y todavía no protegen nada. " +
+      "Con el servidor conectado, las contraseñas y los permisos se comprobarán allí." +
+      (atajos ? ' <span class="demo-atajos">Entrar de prueba como <button class="enlace" type="button" data-cta-demo="ceo">CEO</button> o como ' +
+        '<button class="enlace" type="button" data-cta-demo="comercial">comercial</button>.</span>' : "") + "</span></p>" : "";
+  }
+  // entra con una cuenta de prueba (solo modo demo) y sigue a donde iba
+  function entrarDemo(rol, volver) {
+    if (CU.modo !== "demo" || !CU.entrarDemo) return;
+    CU.entrarDemo(rol).then(function (c) {
+      ponerSesion(c);
+      avisar("Has entrado como " + c.nombre); // las cuentas de prueba ya lo dicen en su nombre
+      location.replace("#" + (volverSeguro(volver) || (c.rol === "ceo" ? "/ceo" : "/")));
+    }, function (e) { avisar(msgError(e) + " Vuelve a las cuentas de prueba iniciales desde el panel."); });
+  }
+  function paginaAviso(titulo, texto, acciones) {
+    document.title = titulo + " · Catálogo General ICSA España";
+    app.innerHTML = '<div class="envoltura pagina"><h1>' + esc(titulo) + '</h1><p class="pagina__sub">' + esc(texto) + '</p><div class="form-acciones">' + (acciones || "") + "</div></div>";
+  }
+
+  // ---- formularios
+  function campoCta(s, valor, pre) {
+    var id = pre + "-" + (s.id || s.k), v = valor == null ? "" : String(valor);
+    var desc = (s.ayuda ? id + "-ayuda " : "") + "err-" + id;
+    var attrs = ' id="' + id + '" name="' + (s.id || s.k) + '" aria-describedby="' + desc + '"' + (s.obl ? " required" : "") + (s.desactivado ? " disabled" : "");
+    var error = '<span class="campo__error" id="err-' + id + '" aria-live="polite"></span>';
+    var control;
+    if (s.tipo === "select") {
+      control = "<select" + attrs + ">" + (v ? "" : '<option value="">Elige una opción</option>') + s.ops.map(function (o) {
+        var val = Array.isArray(o) ? o[0] : o, txt = Array.isArray(o) ? o[1] : o;
+        return '<option value="' + esc(val) + '"' + (val === v ? " selected" : "") + ">" + esc(txt) + "</option>";
+      }).join("") + "</select>";
+    } else if (s.tipo === "area") {
+      control = "<textarea" + attrs + ' maxlength="' + s.max + '" rows="3">' + esc(v) + "</textarea>";
+    } else {
+      var tipo = s.tipo || "text";
+      control = "<input" + attrs + ' type="' + (tipo === "usuario" ? "text" : tipo) + '" maxlength="' + s.max + '" autocomplete="' + (s.ac || "off") + '"' +
+        (s.num ? ' inputmode="numeric"' : "") + (tipo === "email" || tipo === "usuario" ? ' spellcheck="false" autocapitalize="off"' : "") + ' value="' + esc(v) + '">';
+      if (tipo === "password") control = '<span class="campo__clave">' + control + '<button class="icono-boton" type="button" data-cta-ver="' + id + '" aria-pressed="false" aria-label="Mostrar la contraseña">' + ICO.ojo + "</button></span>";
+    }
+    return '<div class="campo campo--pedido' + (s.ancho ? " campo--ancho" : "") + '"><label for="' + id + '">' + esc(s.t) +
+      (s.obl || s.sinOpcional ? "" : ' <span class="opcional">(opcional)</span>') + "</label>" + control +
+      (s.ayuda ? '<span class="campo__ayuda" id="' + id + '-ayuda">' + esc(s.ayuda) + "</span>" : "") + error + "</div>";
+  }
+  function campos(lista, datos, pre) { return lista.map(function (s) { return campoCta(s, datos[s.id || s.k], pre); }).join(""); }
+  function porClave(lista, claves) { return lista.filter(function (s) { return claves.indexOf(s.id || s.k) >= 0; }); }
+  var RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  function marcarError(el, msg) {
+    el.setAttribute("aria-invalid", msg ? "true" : "false");
+    var er = document.getElementById("err-" + el.id);
+    if (er) er.textContent = msg;
+  }
+  // lee y valida; marca cada error junto a su campo y devuelve null si falta algo
+  function leerForm(form, lista, pre) {
+    var d = {}, malos = [];
+    lista.forEach(function (s) {
+      var el = form.querySelector("#" + pre + "-" + (s.id || s.k));
+      if (!el || el.disabled) return;
+      var v = el.value.trim(), msg = "";
+      if (s.obl && !v) msg = s.tipo === "select" ? "Elige una opción." : "Este dato es obligatorio.";
+      else if (v && s.tipo === "email" && !RE_EMAIL.test(v)) msg = "Revisa el correo electrónico.";
+      else if (v && s.tipo === "usuario" && !CU.usuarioValido(v)) msg = "Usa solo letras, números, punto o guion, sin espacios; o un correo completo.";
+      else if (v && s.tipo === "tel" && v.replace(/\D/g, "").length < 9) msg = "El teléfono necesita al menos 9 cifras.";
+      else if (v && s.min && v.length < s.min) msg = "Necesita al menos " + s.min + " caracteres.";
+      else if (v && s.num && !/^\d+$/.test(v)) msg = "Escribe solo el número.";
+      d[s.id || s.k] = v;
+      marcarError(el, msg);
+      if (msg) malos.push(el);
+    });
+    if (malos.length) { malos[0].focus(); return null; }
+    return d;
+  }
+  function errorForm(form, msg) {
+    var p = form.querySelector(".form-error");
+    if (!p) { if (msg) avisar(msg); return; }
+    p.textContent = msg; p.hidden = !msg;
+  }
+  function errorCorreo(form) {
+    errorForm(form, "");
+    var em = form.querySelector('[name="email"]');
+    marcarError(em, "Ya hay una cuenta con este usuario.");
+    em.focus();
+  }
+  function ocupado(form, txt) {
+    var b = form.querySelector('[type="submit"]'), antes = b.innerHTML;
+    b.disabled = true; b.textContent = txt; form.setAttribute("aria-busy", "true");
+    return function () { b.disabled = false; b.innerHTML = antes; form.removeAttribute("aria-busy"); };
+  }
+
+  // ---- cabecera: «Entrar», «Mi cuenta» o «Panel CEO»
+  function pintarBotonCuenta() {
+    if (!botonCuenta) return;
+    botonCuenta.hidden = !CU.disponible;
+    if (!CU.disponible) return;
+    var texto = !yoCta ? "Entrar" : yoCta.rol === "ceo" ? "Panel CEO" : "Mi cuenta";
+    botonCuenta.setAttribute("href", !yoCta ? "#/acceso" : yoCta.rol === "ceo" ? "#/ceo" : "#/cuenta");
+    botonCuenta.querySelector("span").textContent = texto;
+    botonCuenta.setAttribute("aria-label", yoCta ? texto + ", " + yoCta.nombre : "Entrar");
+    botonCuenta.classList.toggle("boton-cuenta--dentro", !!yoCta);
+  }
+  function ponerSesion(c) {
+    yoCta = c;
+    // con la contraseña provisional, el catálogo sigue oculto hasta que ponga una suya
+    document.documentElement.classList.toggle("con-sesion", !!c && !c.claveProvisional);
+    pintarBotonCuenta();
+  }
+  // Con cuentas activas, el catálogo solo se ve con la sesión abierta: hasta saber si la hay, no se pinta nada.
+  var sesionLista = !CU.disponible;
+  if (CU.disponible) {
+    CU.alCambiar(function (c) {
+      var antes = yoCta;
+      ponerSesion(c);
+      if (antes && !c && sesionLista) enrutar(); // sesión cerrada en otra pestaña: vuelve a la entrada
+    });
+    CU.sesion().then(function (c) { ponerSesion(c); sesionLista = true; enrutar(); });
+  }
+  pintarBotonCuenta();
+
+  function volverSeguro(v) { return v && /^\/(f|p|cuenta|ceo|compatibilidades|buscar|pedido)(\/|\?|$)/.test(v) ? v : ""; }
+  function rutaCuentas(seg, params) {
+    marcarNav("__ninguna");
+    if (!CU.disponible) {
+      paginaAviso("El acceso del equipo comercial aún no está activo", "Mientras tanto, el catálogo se puede consultar sin entrar.", '<a class="boton" href="#/">Volver al catálogo</a>');
+      return;
+    }
+    var t = turno;
+    document.title = "Cargando · Catálogo General ICSA España";
+    app.innerHTML = '<div class="envoltura pagina"><p class="cargando" role="status">Cargando…</p></div>';
+    CU.sesion().then(function (c) {
+      if (t !== turno) return;
+      ponerSesion(c);
+      if (seg[0] === "acceso" && params.get("demo")) entrarDemo(params.get("demo"), params.get("volver"));
+      else if (seg[0] === "acceso") vistaAcceso(params.get("volver"));
+      else if (seg[0] === "cuenta") vistaCuenta();
+      else vistaCeo(t, seg[1], seg[2]);
+    });
+  }
+
+  // ---- entrar
+  function vistaAcceso(volver) {
+    if (yoCta) { location.replace("#" + (volverSeguro(volver) || (yoCta.rol === "ceo" ? "/ceo" : "/"))); return; }
+    // puerta del catálogo: sin sesión no se ve nada más; lleva el aviso de profesionales como la portada
+    document.title = "Entrar · Catálogo General ICSA España";
+    document.documentElement.classList.add("en-portada");
+    app.innerHTML = '<div class="envoltura pagina acceso"><div class="acceso__rejilla">' +
+      '<section class="acceso__caja" aria-labelledby="t-catalogo"><h1 id="t-catalogo" class="acceso__titulo">Catálogo General <span>ICSA España</span></h1>' +
+      '<p class="solo-pro">' + ICO.maletin + "<span>Venta exclusivamente a profesionales</span></p>" +
+      '<p class="portada__texto">Acceso del equipo comercial de SBC Grupo Sebalcab: cilindros, cerraduras, cierrapuertas, antipánicos y candados con su foto real, sus medidas y su código.</p>' +
+      avisoDemo(true) +
+      '<form class="form-cta acceso__form" data-cta-form="entrar" data-volver="' + esc(volverSeguro(volver)) + '" novalidate aria-labelledby="t-entrar">' +
+      '<h2 id="t-entrar">Entrar</h2>' +
+      campos(SPEC.entrar, {}, "ent") + '<p class="form-error" role="alert" hidden></p>' +
+      '<button class="boton boton--ancho" type="submit">Entrar</button></form>' +
+      '<details class="olvido"><summary>¿Has olvidado la contraseña?</summary><p>Pide a la dirección una contraseña provisional. ' +
+      "Después podrás cambiarla en «Mi cuenta».</p></details></section>" +
+      '<aside class="acceso__alta" aria-labelledby="t-alta"><h2 id="t-alta">¿Aún no tienes cuenta?</h2>' +
+      "<p>Las cuentas del equipo comercial las crea la dirección de Sebalcab desde su panel. Pídele la tuya: te dará una contraseña provisional para entrar la primera vez.</p>" +
+      '<ul class="lista-ok"><li>' + ICO.hecho + "<span>Todo el catálogo con foto real, medidas y código.</span></li><li>" + ICO.hecho +
+      "<span>Pedidos con los datos del cliente y tu nombre.</span></li></ul></aside></div></div>";
+  }
+  function enviarEntrar(form) {
+    var d = leerForm(form, SPEC.entrar, "ent");
+    if (!d) return;
+    errorForm(form, "");
+    var fin = ocupado(form, "Entrando…");
+    CU.entrar(d.email, d.clave).then(function (c) {
+      ponerSesion(c);
+      avisar("Has entrado como " + c.nombre);
+      location.hash = "#" + (form.getAttribute("data-volver") || (c.rol === "ceo" ? "/ceo" : "/"));
+    }, function (e) {
+      fin();
+      errorForm(form, msgError(e));
+      var cl = form.querySelector('[name="clave"]');
+      if (e.codigo === "credenciales" && cl) { cl.value = ""; cl.focus(); }
+    });
+  }
+
+  // ---- mi cuenta
+  // para que el gestor de contraseñas del navegador guarde la nueva con su usuario
+  function usuarioOculto(c) { return '<input type="text" autocomplete="username" value="' + esc(CU.usuario(c.email)) + '" hidden>'; }
+  function vistaCuenta() {
+    if (!yoCta) { location.replace("#/acceso?volver=/cuenta"); return; }
+    var c = yoCta, prov = !!c.claveProvisional;
+    document.title = (prov ? "Pon tu contraseña" : "Mi cuenta") + " · Catálogo General ICSA España";
+    var dato = function (t, v, vacio) { return "<div><dt>" + t + "</dt><dd>" + (v ? esc(v) : '<span class="fuera">' + (vacio || "Sin indicar") + "</span>") + "</dd></div>"; };
+    app.innerHTML = '<div class="envoltura pagina cuenta">' +
+      '<div class="ceo__cabeza"><div><p class="ceo__rol">' + (c.rol === "ceo" ? ICO.escudo + "CEO" : ICO.maletin + "Equipo comercial") + "</p>" +
+      "<h1>" + esc(c.nombre) + '</h1><p class="pagina__sub">Usuario: ' + esc(CU.usuario(c.email)) + "</p></div>" +
+      '<div class="ceo__acciones">' + (c.rol === "ceo" ? '<a class="boton" href="#/ceo">' + ICO.escudo + "Panel CEO</a>" : "") +
+      '<button class="boton boton--sec" type="button" data-cta-salir>' + ICO.salir + "Salir</button></div></div>" + avisoDemo() +
+      (prov ? '<p class="nota" role="status">' + ICO.llave + "<span><b>Antes de ver el catálogo, pon una contraseña tuya.</b> " +
+        "Escribe la provisional que te dio la dirección en «Contraseña actual» y elige una nueva que solo sepas tú.</span></p>" +
+        '<div class="cuenta__forms"><form class="form-cta caja" data-cta-form="clave" novalidate><h2>Tu contraseña</h2>' + usuarioOculto(c) + campos(SPEC.clave, {}, "mc") +
+        '<p class="form-error" role="alert" hidden></p><div class="form-acciones"><button class="boton" type="submit">Guardar y entrar al catálogo</button></div></form></div></div>' : "") +
+      (prov ? "" : '<dl class="pedido__datos">' + dato("Teléfono", c.telefono) + dato("Zona", c.zona) + dato("Agente en FactuSOL", c.agente, "Sin asignar") +
+      dato("Cuenta desde", fecha(c.creada)) + "</dl>" +
+      '<p class="nota">' + ICO.info + "<span>Tu zona, tu usuario y tu código de agente los cambia la dirección desde su panel.</span></p>" +
+      '<div class="cuenta__forms">' +
+      '<form class="form-cta caja" data-cta-form="contacto" novalidate><h2>Tus datos</h2>' + campos(SPEC.contacto, c, "mc") +
+      '<p class="form-error" role="alert" hidden></p><div class="form-acciones"><button class="boton" type="submit">Guardar</button></div></form>' +
+      '<form class="form-cta caja" data-cta-form="clave" novalidate><h2>Cambiar la contraseña</h2>' + usuarioOculto(c) + campos(SPEC.clave, {}, "mc") +
+      '<p class="form-error" role="alert" hidden></p><div class="form-acciones"><button class="boton" type="submit">Cambiar la contraseña</button></div></form>' +
+      "</div></div>");
+    if (prov) { var ac = document.getElementById("mc-actual"); if (ac) ac.focus(); }
+  }
+  function enviarContacto(form) {
+    var d = leerForm(form, SPEC.contacto, "mc");
+    if (!d) return;
+    var fin = ocupado(form, "Guardando…");
+    CU.actualizarPropia(d).then(function (c) {
+      ponerSesion(c); vistaCuenta(); avisar("Datos guardados");
+      var b = app.querySelector('[data-cta-form="contacto"] [type="submit"]'); if (b) b.focus();
+    }, function (e) { fin(); errorForm(form, msgError(e)); });
+  }
+  function enviarClave(form) {
+    var d = leerForm(form, SPEC.clave, "mc");
+    if (!d) return;
+    errorForm(form, "");
+    var fin = ocupado(form, "Cambiando…");
+    var eraProvisional = !!(yoCta && yoCta.claveProvisional);
+    CU.cambiarClave(d.actual, d.nueva).then(function (c) {
+      if (c) ponerSesion(c);
+      if (eraProvisional) { avisar("Contraseña cambiada. Ya puedes usar el catálogo."); location.hash = "#/"; return; }
+      fin(); form.reset(); avisar("Contraseña cambiada");
+    }, function (e) {
+      fin();
+      errorForm(form, e.codigo === "credenciales" ? "La contraseña actual no es correcta." : msgError(e));
+    });
+  }
+
+  // ---- panel CEO
+  var estCeo = { filtro: "todas", q: "" }, cuentasCeo = [];
+  var claveRecien = null; // contraseña provisional recién generada: se enseña una sola vez
+  function vistaCeo(t, sub, id) {
+    if (!yoCta) { location.replace("#/acceso?volver=/ceo" + (sub === "cuenta" && id ? "/cuenta/" + id : "")); return; }
+    if (yoCta.rol !== "ceo") {
+      paginaAviso("Esta parte es solo para el CEO", "Tu cuenta es de comercial. En «Mi cuenta» tienes tus datos.", '<a class="boton" href="#/cuenta">Ir a Mi cuenta</a>');
+      return;
+    }
+    if (sub === "cuenta" && id) fichaCeo(t, id);
+    else if (sub === "nueva") nuevaCeo();
+    else panelCeo(t);
+  }
+  function errorVista(e) {
+    if (e && e.codigo === "permiso") {
+      // sin sesión, a la entrada; con sesión, el servidor no la acepta como CEO: se avisa en vez de volver a la entrada,
+      // que mandaría otra vez aquí y se quedaría cargando sin fin
+      if (!yoCta) { location.replace("#/acceso?volver=/ceo"); return; }
+      paginaAviso("No se ha podido abrir el panel", "El servidor no ha aceptado tu sesión de CEO. Sal y vuelve a entrar; si sigue pasando, avisa a quien mantiene el catálogo.",
+        '<a class="boton" href="#/ceo">Reintentar</a><button class="boton boton--sec" type="button" data-cta-salir>' + ICO.salir + "Salir</button>");
+      return;
+    }
+    if (e && e.codigo === "no-existe") { paginaAviso("Esa cuenta ya no existe", "Puede que se haya eliminado.", '<a class="boton" href="#/ceo">Volver al panel</a>'); return; }
+    paginaAviso("No se han podido cargar las cuentas", msgError(e), '<a class="boton" href="#/ceo">Reintentar</a>');
+  }
+  function cabezaCeo(titulo, sub, acciones) {
+    return '<p class="ceo__sesion">Has entrado como <b>' + esc(CU.usuario(yoCta.email)) + '</b> · <a href="#/cuenta">Mi cuenta</a> · ' +
+      '<button class="enlace" type="button" data-cta-salir>Salir</button></p>' +
+      '<div class="ceo__cabeza"><div><p class="ceo__rol">' + ICO.escudo + "Panel CEO</p><h1>" + titulo + "</h1>" +
+      (sub ? '<p class="pagina__sub">' + sub + "</p>" : "") + '</div><div class="ceo__acciones">' + (acciones || "") + "</div></div>";
+  }
+  function contarCuentas(l) {
+    var n = { activa: 0, bloqueada: 0, todas: l.length };
+    l.forEach(function (c) { n[c.estado]++; });
+    return n;
+  }
+  function filtradas() {
+    var q = plano(estCeo.q.trim());
+    return cuentasCeo.filter(function (c) {
+      if (estCeo.filtro !== "todas" && c.estado !== estCeo.filtro) return false;
+      return !q || plano([c.nombre, CU.usuario(c.email), c.telefono, c.zona, c.agente].join(" ")).indexOf(q) >= 0;
+    }).sort(function (a, b) {
+      return (ORDEN_ESTADO[a.estado] - ORDEN_ESTADO[b.estado]) || ((a.rol === "ceo" ? 0 : 1) - (b.rol === "ceo" ? 0 : 1)) || a.nombre.localeCompare(b.nombre, "es");
+    });
+  }
+  function resumenHTML(n) {
+    return '<ul class="resumen" aria-label="Filtrar las cuentas por estado">' + ["activa", "bloqueada", "todas"].map(function (k) {
+      return '<li><button class="resumen__item" type="button" data-cta-filtro="' + k + '" aria-pressed="' + (estCeo.filtro === k) + '">' +
+        "<strong>" + n[k] + "</strong><span>" + NOMBRE_FILTRO[k] + "</span></button></li>";
+    }).join("") + "</ul>";
+  }
+  function telHTML(t) { return t ? '<a href="tel:' + esc(t.replace(/[^\d+]/g, "")) + '">' + esc(t) + "</a>" : ""; }
+  function tablaCuentasHTML() {
+    var l = filtradas();
+    var cab = '<p class="ceo__cuenta" role="status">' + l.length + (l.length === 1 ? " cuenta" : " cuentas") +
+      (estCeo.filtro !== "todas" ? " · " + NOMBRE_FILTRO[estCeo.filtro].toLowerCase() : "") + (estCeo.q.trim() ? " · con «" + esc(estCeo.q.trim()) + "»" : "") +
+      (estCeo.filtro !== "todas" || estCeo.q.trim() ? ' <button class="enlace" type="button" data-cta-filtro="todas" data-limpiar-q>Ver todas</button>' : "") + "</p>";
+    if (!l.length) return cab + '<p class="vacio">Ninguna cuenta con ese filtro.</p>';
+    var sin = function (v, txt) { return v ? esc(v) : '<span class="fuera">' + txt + "</span>"; };
+    return cab + '<div class="tabla-caja"><table class="tabla tabla--cuentas"><thead><tr><th scope="col">Nombre</th><th scope="col">Teléfono</th>' +
+      '<th scope="col">Zona</th><th scope="col">Agente FactuSOL</th><th scope="col">Estado</th><th scope="col">Último acceso</th><th scope="col">Acceso</th></tr></thead><tbody>' +
+      l.map(function (c) {
+        return '<tr><td><a class="celda-nombre" href="#/ceo/cuenta/' + c.id + '"><b>' + esc(c.nombre) + "</b>" + (c.rol === "ceo" ? ' <span class="etiqueta">CEO</span>' : "") +
+          "<small>" + esc(CU.usuario(c.email)) + "</small></a></td><td>" + telHTML(c.telefono) + "</td>" +
+          "<td>" + sin(c.zona, "Sin indicar") + '</td><td class="mono">' + sin(c.agente, "Sin asignar") + "</td><td>" + pastilla(c.estado) + "</td>" +
+          "<td>" + (c.ultimoAcceso ? '<span title="' + esc(fecha(c.ultimoAcceso, true)) + '">' + esc(haceCuanto(c.ultimoAcceso)) + "</span>" : '<span class="fuera">Nunca</span>') + "</td>" +
+          "<td>" + (c.id === yoCta.id ? '<span class="fuera">Tu cuenta</span>' : botonAcceso(c, true)) + "</td></tr>";
+      }).join("") + "</tbody></table></div>";
+  }
+  // quitar o devolver el acceso (bloquear o desbloquear), en la tabla y en la ficha
+  function botonAcceso(c, fila) {
+    var quitar = c.estado !== "bloqueada";
+    return '<button class="boton' + (quitar ? " boton--sec" : "") + (fila ? " boton--fila" : "") + '" type="button" data-cta-estado="' + (quitar ? "bloqueada" : "activa") +
+      '" data-id="' + c.id + '" data-nombre="' + esc(c.nombre) + '"' + (fila ? ' aria-label="' + (quitar ? "Quitar el acceso a " : "Dar acceso a ") + esc(c.nombre) + '"' : "") + ">" +
+      (quitar ? "Quitar acceso" : "Dar acceso") + "</button>";
+  }
+  function panelCeo(t) {
+    return CU.listar().then(function (l) {
+      if (t !== turno) return;
+      cuentasCeo = l;
+      document.title = "Panel CEO · Catálogo General ICSA España";
+      app.innerHTML = '<div class="envoltura pagina ceo">' +
+        cabezaCeo("Equipo comercial", "Quién entra en el Catálogo General ICSA España y cuándo entró por última vez.",
+          '<a class="boton" href="#/ceo/nueva">' + ICO.mas + "Nuevo comercial</a>" +
+          '<button class="boton boton--sec" type="button" data-cta-csv>' + ICO.descargar + "Exportar CSV</button>") +
+        avisoDemo().replace("</span></p>", ' <button class="enlace" type="button" data-cta-reiniciar>Volver a las cuentas de prueba iniciales</button></span></p>') +
+        resumenHTML(contarCuentas(l)) +
+        '<section class="ceo__bloque" aria-labelledby="t-todas"><h2 id="t-todas">Cuentas</h2>' +
+        '<div class="ceo__filtros"><div class="campo campo--pedido"><label for="ceo-q">Buscar una cuenta</label>' +
+        '<input id="ceo-q" type="search" data-cta-buscar autocomplete="off" placeholder="Nombre, usuario, teléfono, zona o agente" value="' + esc(estCeo.q) + '"></div></div>' +
+        '<div id="ceo-tabla">' + tablaCuentasHTML() + "</div></section></div>";
+    }).catch(errorVista);
+  }
+  function repintarCeo(foco) {
+    var y = window.scrollY, h = location.hash, t = ++turno;
+    var hecho = /^#\/ceo\/cuenta\//.test(h) ? fichaCeo(t, h.split("/")[3]) : panelCeo(t);
+    return hecho.then(function () {
+      window.scrollTo(0, y);
+      var el = foco && app.querySelector(foco);
+      if (el) el.focus({ preventScroll: true });
+    });
+  }
+  function claveProvHTML(prov, c) {
+    return '<div class="clave-prov" role="status"><div><p class="clave-prov__t">Contraseña provisional de <b>' + esc(c.nombre) + "</b></p>" +
+      '<p class="clave-prov__v mono">' + esc(prov) + "</p>" +
+      '<p class="plano-pie">Cópiala ahora: no se vuelve a mostrar. Dásela en persona o por teléfono y pídele que la cambie en «Mi cuenta».</p></div>' +
+      '<button class="boton" type="button" data-copiar="' + esc(prov) + '">' + ICO.copiar + "Copiar</button></div>";
+  }
+  var FS_FICHA = ['<fieldset><legend>Comercial</legend><div class="form-rejilla">', ["nombre", "telefono", "email"],
+    '<fieldset><legend>En Sebalcab</legend><div class="form-rejilla">', ["zona", "agente", "rol", "notas"]];
+  function bloquesFicha(L, d, pre) {
+    return FS_FICHA[0] + campos(porClave(L, FS_FICHA[1]), d, pre) + "</div></fieldset>" +
+      FS_FICHA[2] + campos(porClave(L, FS_FICHA[3]), d, pre) + "</div></fieldset>";
+  }
+  function fichaCeo(t, id) {
+    return CU.obtener(id).then(function (c) {
+      if (t !== turno) return;
+      var propia = c.id === yoCta.id;
+      document.title = c.nombre + " · Panel CEO · Catálogo General ICSA España";
+      var acciones = propia ? "" : botonAcceso(c);
+      var prov = claveRecien && claveRecien.id === c.id ? claveRecien.clave : null;
+      claveRecien = null;
+      var L = SPEC.ficha.map(function (s) { return s.k === "rol" && propia ? spec("rol", { desactivado: true }) : s; });
+      var dd = function (t2, v) { return "<div><dt>" + t2 + "</dt><dd>" + v + "</dd></div>"; };
+      var por = function (q) { return q ? "<br><small>Por " + esc(q) + "</small>" : ""; };
+      app.innerHTML = '<div class="envoltura pagina ceo"><nav class="migas" aria-label="Ruta"><a href="#/ceo">Panel CEO</a> › ' + esc(c.nombre) + "</nav>" +
+        cabezaCeo(esc(c.nombre), pastilla(c.estado) + ' <span class="etiqueta">' + ROLES[c.rol] + "</span>", acciones) +
+        (propia ? '<p class="nota">' + ICO.info + "<span>Es tu propia cuenta: no puedes bloquearla, eliminarla ni quitarle el rol de CEO.</span></p>" : "") +
+        (prov ? claveProvHTML(prov, c) : "") +
+        '<div class="ficha-cta"><form class="form-cta" data-cta-form="ficha" data-id="' + c.id + '" novalidate>' + bloquesFicha(L, Object.assign({}, c, { email: CU.usuario(c.email) }), "fi") +
+        '<p class="form-error" role="alert" hidden></p><div class="form-acciones"><button class="boton" type="submit">Guardar cambios</button><a href="#/ceo">Volver al panel</a></div></form>' +
+        '<aside class="ficha-cta__lado">' +
+        '<div class="caja"><h2>Historial</h2><dl class="historial">' + dd("Alta", esc(fecha(c.creada, true)) + por(c.creadaPor)) +
+        (c.revisada ? dd(c.estado === "bloqueada" ? "Bloqueada" : "Desbloqueada", esc(fecha(c.revisada, true)) + por(c.revisadaPor)) : "") +
+        dd("Último acceso", c.ultimoAcceso ? esc(fecha(c.ultimoAcceso, true)) : '<span class="fuera">Nunca</span>') + "</dl></div>" +
+        '<div class="caja"><h2>Contraseña</h2>' + (c.claveProvisional ? "<p><b>Todavía tiene la provisional.</b> Al entrar se le pedirá cambiarla.</p>" : "") + '<p>Si la ha olvidado, genera una provisional y dásela en persona o por teléfono. La de ahora deja de valer.</p>' +
+        '<button class="boton boton--sec" type="button" data-cta-clave="' + c.id + '" data-nombre="' + esc(c.nombre) + '">' + ICO.llave + "Generar contraseña</button></div>" +
+        (propia ? "" : '<div class="caja"><h2>Eliminar la cuenta</h2><p>Borra la cuenta y sus datos. Si solo quieres que no entre durante un tiempo, mejor bloquéala.</p>' +
+          '<button class="boton boton--peligro" type="button" data-cta-eliminar="' + c.id + '" data-nombre="' + esc(c.nombre) + '">' + ICO.borrar + "Eliminar la cuenta</button></div>") +
+        "</aside></div></div>";
+    }).catch(errorVista);
+  }
+  function nuevaCeo() {
+    document.title = "Nuevo comercial · Panel CEO · Catálogo General ICSA España";
+    app.innerHTML = '<div class="envoltura pagina ceo"><nav class="migas" aria-label="Ruta"><a href="#/ceo">Panel CEO</a> › Nuevo comercial</nav>' +
+      cabezaCeo("Nuevo comercial", "La cuenta queda activa con una contraseña provisional, que verás al crearla.", "") + avisoDemo() +
+      '<form class="form-cta form-cta--medio" data-cta-form="nueva" novalidate>' + bloquesFicha(SPEC.nueva, { rol: "comercial" }, "nu") +
+      '<p class="form-error" role="alert" hidden></p><div class="form-acciones"><button class="boton" type="submit">Crear la cuenta</button><a href="#/ceo">Cancelar</a></div></form></div>';
+  }
+  function enviarFicha(form) {
+    var id = form.getAttribute("data-id"), d = leerForm(form, SPEC.ficha, "fi");
+    if (!d) return;
+    errorForm(form, "");
+    var fin = ocupado(form, "Guardando…");
+    CU.actualizar(id, d).then(function (c) {
+      avisar("Cambios guardados: " + c.nombre);
+      repintarCeo('[data-cta-form="ficha"] [type="submit"]');
+    }, function (e) {
+      fin(); errorForm(form, msgError(e));
+      if (e.codigo === "existe") errorCorreo(form);
+    });
+  }
+  function enviarNueva(form) {
+    var d = leerForm(form, SPEC.nueva, "nu");
+    if (!d) return;
+    errorForm(form, "");
+    var fin = ocupado(form, "Creando…");
+    CU.crear(d).then(function (r) {
+      claveRecien = { id: r.cuenta.id, clave: r.clave };
+      avisar("Cuenta creada: " + r.cuenta.nombre);
+      location.hash = "#/ceo/cuenta/" + r.cuenta.id;
+    }, function (e) {
+      fin(); errorForm(form, msgError(e));
+      if (e.codigo === "existe") errorCorreo(form);
+    });
+  }
+  var HECHO = { activa: "Acceso devuelto", bloqueada: "Acceso quitado" };
+  function cambiarEstado(b) {
+    var id = b.getAttribute("data-id"), estado = b.getAttribute("data-cta-estado"), n = b.getAttribute("data-nombre");
+    if (estado === "bloqueada" && !window.confirm("¿Quitar el acceso a " + n + "? No podrá entrar hasta que se lo vuelvas a dar.")) return;
+    var enTabla = !!b.closest(".tabla");
+    b.disabled = true;
+    CU.actualizar(id, { estado: estado }).then(function (c) {
+      avisar(HECHO[estado] + ": " + c.nombre);
+      repintarCeo(enTabla ? '[data-cta-estado][data-id="' + id + '"]' : ".ceo__acciones .boton");
+    }, function (e) { b.disabled = false; avisar(msgError(e)); });
+  }
+  function exportarCSV() {
+    var cols = [["nombre", "Nombre"], ["email", "Usuario"], ["telefono", "Teléfono"], ["zona", "Zona"], ["agente", "Agente FactuSOL"],
+      ["rol", "Rol"], ["estado", "Estado"], ["creada", "Alta"], ["ultimoAcceso", "Último acceso"]];
+    // evita que Excel tome como fórmula un texto escrito en la ficha
+    var celda = function (x) {
+      x = String(x == null ? "" : x);
+      if (/^[=@\t\r]|^[+\-](?!\d)/.test(x)) x = "'" + x;
+      return /[;"\n\r]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x;
+    };
+    var valor = function (c, k) {
+      return k === "creada" || k === "ultimoAcceso" ? fecha(c[k]) : k === "estado" ? ESTADOS[c.estado] : k === "rol" ? ROLES[c.rol] : k === "email" ? CU.usuario(c.email) : c[k];
+    };
+    var l = filtradas();
+    var filas = [cols.map(function (c) { return c[1]; })].concat(l.map(function (c) { return cols.map(function (k) { return valor(c, k[0]); }); }));
+    var blob = new Blob(["﻿" + filas.map(function (r) { return r.map(celda).join(";"); }).join("\r\n")], { type: "text/csv;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "equipo-comercial-catalogo-icsa-" + new Date().toISOString().slice(0, 10) + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    avisar("CSV con " + l.length + (l.length === 1 ? " cuenta" : " cuentas"));
+  }
+
+  // ---- eventos de las pantallas de cuentas
+  var ENVIOS = { entrar: enviarEntrar, contacto: enviarContacto, clave: enviarClave, ficha: enviarFicha, nueva: enviarNueva };
+  app.addEventListener("submit", function (ev) {
+    var form = ev.target.closest("[data-cta-form]");
+    if (!form) return;
+    ev.preventDefault();
+    if (!form.hasAttribute("aria-busy")) ENVIOS[form.getAttribute("data-cta-form")](form);
+  });
+  app.addEventListener("click", function (ev) {
+    var b = ev.target.closest("[data-cta-ver],[data-cta-salir],[data-cta-filtro],[data-cta-estado],[data-cta-clave],[data-cta-eliminar],[data-cta-csv],[data-cta-reiniciar],[data-cta-demo]");
+    if (!b) return;
+    if (b.hasAttribute("data-cta-demo")) {
+      var fe = app.querySelector('[data-cta-form="entrar"]');
+      entrarDemo(b.getAttribute("data-cta-demo"), fe && fe.getAttribute("data-volver"));
+      return;
+    }
+    if (b.hasAttribute("data-cta-reiniciar")) {
+      if (!window.confirm("¿Borrar los cambios de prueba y volver a las cuentas iniciales? Tendrás que entrar otra vez.")) return;
+      CU.reiniciarDemo().then(function () { ponerSesion(null); avisar("Cuentas de prueba reiniciadas"); location.hash = "#/acceso?volver=/ceo"; });
+      return;
+    }
+    if (b.hasAttribute("data-cta-ver")) {
+      var inp = document.getElementById(b.getAttribute("data-cta-ver")), ver = inp.type === "password";
+      inp.type = ver ? "text" : "password";
+      b.setAttribute("aria-pressed", String(ver));
+      b.setAttribute("aria-label", ver ? "Ocultar la contraseña" : "Mostrar la contraseña");
+    } else if (b.hasAttribute("data-cta-salir")) {
+      CU.salir().then(function () { ponerSesion(null); avisar("Has salido de tu cuenta"); location.hash = "#/acceso"; });
+    } else if (b.hasAttribute("data-cta-filtro")) {
+      estCeo.filtro = b.getAttribute("data-cta-filtro");
+      var q2 = document.getElementById("ceo-q"), limpiarQ = b.hasAttribute("data-limpiar-q");
+      if (limpiarQ) { estCeo.q = ""; if (q2) q2.value = ""; }
+      Array.prototype.forEach.call(app.querySelectorAll(".resumen [data-cta-filtro]"), function (x) {
+        x.setAttribute("aria-pressed", String(x.getAttribute("data-cta-filtro") === estCeo.filtro));
+      });
+      document.getElementById("ceo-tabla").innerHTML = tablaCuentasHTML();
+      if (limpiarQ && q2) q2.focus();
+      if (b.closest(".resumen")) document.getElementById("t-todas").scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    } else if (b.hasAttribute("data-cta-estado")) {
+      cambiarEstado(b);
+    } else if (b.hasAttribute("data-cta-clave")) {
+      var idc = b.getAttribute("data-cta-clave");
+      if (!window.confirm("¿Generar una contraseña provisional para " + b.getAttribute("data-nombre") + "? La de ahora dejará de valer.")) return;
+      CU.restablecerClave(idc).then(function (prov) {
+        claveRecien = { id: idc, clave: prov };
+        fichaCeo(++turno, idc).then(function () { window.scrollTo(0, 0); var cp = app.querySelector(".clave-prov .boton"); if (cp) cp.focus(); });
+      }, function (e) { avisar(msgError(e)); });
+    } else if (b.hasAttribute("data-cta-eliminar")) {
+      if (!window.confirm("¿Eliminar la cuenta de " + b.getAttribute("data-nombre") + "? No se puede deshacer.")) return;
+      CU.eliminar(b.getAttribute("data-cta-eliminar")).then(function () {
+        avisar("Cuenta eliminada: " + b.getAttribute("data-nombre"));
+        location.hash = "#/ceo";
+      }, function (e) { avisar(msgError(e)); });
+    } else if (b.hasAttribute("data-cta-csv")) {
+      exportarCSV();
+    }
+  });
+  var tCeo;
+  app.addEventListener("input", function (ev) {
+    var el = ev.target;
+    if (el.closest && el.closest("[data-cta-form]") && el.getAttribute("aria-invalid") === "true") marcarError(el, "");
+    if (!el.hasAttribute("data-cta-buscar")) return;
+    clearTimeout(tCeo);
+    tCeo = setTimeout(function () { estCeo.q = el.value; document.getElementById("ceo-tabla").innerHTML = tablaCuentasHTML(); }, 120);
+  });
+
   // ------------------------------------------------------------------ enrutado
   function enrutar() {
+    turno++;
     if (!listaEl.hidden) { focoPrevio = null; cerrarLista(); }
     var h = location.hash.replace(/^#/, "") || "/";
     var partes = h.split("?"), ruta = partes[0], params = new URLSearchParams(partes[1] || "");
     var seg = ruta.split("/").filter(Boolean).map(function (s) { try { return decodeURIComponent(s); } catch (e) { return s; } });
     var mantener = false, portada = false;
-    if (seg[0] === "f" && FAM[seg[1]]) vistaFamilia(seg[1]);
+    document.documentElement.classList.toggle("en-acceso", seg[0] === "acceso");
+    if (CU.disponible) {
+      // sin sesión solo se puede entrar; lo demás manda a la entrada y vuelve después
+      if (!sesionLista) {
+        marcarNav("__ninguna");
+        app.innerHTML = '<div class="envoltura pagina"><p class="cargando" role="status">Cargando…</p></div>';
+        return;
+      }
+      if (!yoCta && seg[0] !== "acceso") {
+        var destino = volverSeguro(h);
+        location.replace("#/acceso" + (destino ? "?volver=" + encodeURIComponent(destino) : ""));
+        return;
+      }
+      // con la contraseña provisional, primero hay que poner una propia
+      if (yoCta && yoCta.claveProvisional && seg[0] !== "cuenta") { location.replace("#/cuenta"); return; }
+    }
+    if (/^(acceso|cuenta|ceo)$/.test(seg[0] || "")) rutaCuentas(seg, params);
+    else if (seg[0] === "f" && FAM[seg[1]]) vistaFamilia(seg[1]);
     else if (seg[0] === "p" && PROD[seg[1]]) mantener = vistaProducto(PROD[seg[1]], seg[2], params.get("ref"), params.get("compat"));
     else if (seg[0] === "compatibilidades") vistaCompat(params.get("q"), params.get("m"));
     else if (seg[0] === "pedido") vistaPedido(seg[1], seg[2]);
